@@ -8,6 +8,7 @@ import type { WindowState } from "../shell/windowStore";
 import type { useSettingsPlumbing } from "../settings/useSettingsPlumbing";
 import type { WindowLate } from "../shell/windowLate";
 import { savedArgs } from "../chat/controls";
+import { CHAT_AGENT, DEFAULT_CHAT_MODEL } from "../chat/opencode";
 import { DEFAULT_MODEL, modelArgs } from "./seats";
 import { noteUse } from "../onboarding/features";
 import { folderName, projectLabel, type Created, type Project, type WorkItem, type Worktree } from "../projects/model";
@@ -492,19 +493,20 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
   };
   // Slice 1 of chat panes (docs/research/chat-pane-plan-2026-11-20.md): "New chat" in the pane's plus menu
-  // opens one Claude pane that draws the chat engine instead of a terminal. It lands in the folder a Claude
-  // launch would use (the project folder, or a fresh worktree when that is the setting) and changes nothing
+  // opens one pane that draws the chat engine instead of a terminal. It lands in the folder a launch
+  // would use (the project folder, or a fresh worktree when that is the setting) and changes nothing
   // else: every other launch is still a terminal, no default moves and no setting flips.
-  // `agentId` (2026-11-20): `claude`, or `openclaude` for the other models. Both draw the chat page; any
-  // other AI still opens its own screen.
+  // `agentId` (2026-11-24): `opencode` unless the caller names another, because every model the chat page
+  // offers runs through OpenCode; `claude` still opens Claude Code's own chat. Any other AI opens its own screen.
   // `inFolder` (the Everyday row, 2026-11-20): a plain folder is not a Git project, so a chat there always
   // opens in the folder itself. Asking for a worktree on it fails with "no default branch was found".
-  // `model` (the Everyday row, 2026-11-20): the chat page starts on that model; null keeps the saved choice.
-  // 2026-11-21: Everyday's New session passes OpenClaude's default, and the model is changed inside the
-  // chat from then on, so nothing asks for a model before the session exists.
-  const newChat = async (projectId: string | null = null, inFolder = false, model: string | null = null, agentId = "claude") => {
+  // `asked` (the Everyday row, 2026-11-20): the chat page starts on that model. With none named, an
+  // OpenCode chat starts on the cheap default and a Claude chat keeps the saved choice. The model is
+  // changed inside the chat from then on, so nothing asks for a model before the session exists.
+  const newChat = async (projectId: string | null = null, inFolder = false, asked: string | null = null, agentId: string = CHAT_AGENT) => {
+    const model = asked ?? (agentId === CHAT_AGENT ? DEFAULT_CHAT_MODEL : null);
     const agent = agents.find((a) => a.id === agentId && a.installed);
-    if (!agent) return setNotice(`${agentId} is not installed here, so a chat cannot start.`);
+    if (!agent) return setNotice(agentId === CHAT_AGENT ? "OpenCode is not installed here, so a chat cannot start. Install it, then try again." : `${agentId} is not installed here, so a chat cannot start.`);
     if (!inFolder) return launch(agent, projectId, true, model);
     const proj = projects.find((p) => p.id === projectFor(projectId));
     if (!proj) return setNotice("Add a project first: an agent needs a project folder to work in.");
@@ -527,9 +529,15 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
   };
   // A kept Everyday chat whose tab was closed (2026-11-21): a pane already showing it comes to the front;
-  // otherwise the same conversation opens with `--resume`, on the AI and model it started with, and the
-  // row moves to the top because it was used just now.
-  const openChat = async (rec: EverydayChat) => {
+  // otherwise the same conversation opens again, on the AI and model it started with, and the row moves
+  // to the top because it was used just now.
+  // A row kept by a build from before 2026-11-24 names an engine the chat page no longer has. It opens as
+  // an OpenCode chat on the same model (its id was an OpenRouter id, named here the way OpenCode lists it).
+  // Its old conversation is not one OpenCode can open, so it starts a fresh one, and the row is rewritten.
+  const openChat = async (kept: EverydayChat) => {
+    const old = kept.agent !== "claude" && kept.agent !== CHAT_AGENT;
+    const rec: EverydayChat = old ? { ...kept, agent: CHAT_AGENT, ...(kept.model ? { model: kept.model.startsWith("openrouter/") ? kept.model : `openrouter/${kept.model}` } : {}) } : kept;
+    if (old) delete rec.session;
     const open = panes.find((x) => x.everyday === rec.id);
     if (open) {
       const at = viewOf(open);
@@ -539,13 +547,14 @@ export function launchActions(s: WindowState, p: ReturnType<typeof useSettingsPl
     }
     const agent = agents.find((a) => a.id === rec.agent && a.installed);
     if (!agent) return setNotice(`${rec.agent} is not installed here, so this chat cannot open.`);
+    if (old) keepChat((list) => putEverydayChat(list, rec));
     setLaunching(true);
     try {
       const onModel = rec.model && rec.model !== DEFAULT_MODEL ? rec.model : null;
       const extra = onModel ? modelArgs(onModel, agent.id) : savedArgs(agent.id);
       const key = await startIn(agent, rec.cwd, null, "", true, extra, rec.name);
       if (key === null) return;
-      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}), ...(rec.effort ? { chatEffort: rec.effort } : {}) } : p)));
+      setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, chat: true as const, everyday: rec.id, ...(rec.session ? { chatResume: rec.session } : {}), ...(rec.session && rec.legacy ? { chatLegacy: rec.legacy } : {}), ...(rec.nameByUser && rec.name ? { titleByUser: true as const } : {}), ...(agent.id !== "claude" ? { chatAgent: agent.id } : {}), ...(onModel ? { chatModel: onModel } : {}), ...(rec.effort ? { chatEffort: rec.effort } : {}) } : p)));
       keepChat((list) => touchEverydayChat(list, rec.id));
       setRefresh((n) => n + 1);
       setNotice(null);

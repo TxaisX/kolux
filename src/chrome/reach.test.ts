@@ -76,6 +76,7 @@ test("T-708: no hand-built palette row repeats a command; its Commands row, with
 //   inner:   a field inside it takes focus and handles the key
 //   parent:  it sits inside another listed dialog, whose Escape closes it
 //   wrapper: the element right around it handles the key
+//   popKey:  the element around it hands the key to popKey, which closes on Escape (chat/webui/models.test.ts)
 //   window:  a keydown listener on the window handles Escape
 //   exempt:  why Escape is not this dialog's to take
 //   layer:   a src/ui wrapper whose useLayer catches Escape on the window (Kolux's stack, ahead of Base UI)
@@ -83,6 +84,7 @@ const DIALOGS: [file: string, label: string, how: string][] = [
   ["launch/ChooserPane.tsx", "Other AI programs", "hook"],
   ["chat/PermissionCard.tsx", "askTitle(card.tool)", "exempt: a card in the chat, its Escape interrupts the agent"],
   ["chat/QuestionCard.tsx", "Question from the agent", "exempt: a card in the chat, its Escape interrupts the agent"],
+  ["chat/webui/ModelPopover.tsx", "Choose a model", "popKey"],
   ["chrome/Ask.tsx", "title", "hook"],
   ["feedback/FeedbackDialog.tsx", "Send feedback", "tag"],
   ["onboarding/Guides.tsx", "Getting Started with Kolux", "tag"],
@@ -221,6 +223,9 @@ function closes(d: Found, how: string, all: Found[]): boolean {
       return all.some((p) => p !== d && p.file === d.file && p.at < d.at && p.at + p.body.length > d.at);
     case "wrapper":
       return /onKeyDown=[^]*?"Escape"/.test(d.src.slice(Math.max(0, d.at - 600), d.at));
+    case "popKey":
+      // The wrapper's handler sends the key to popKey and closes on its answer, and opening focuses the search box.
+      return /onKeyDown=/.test(d.src.slice(Math.max(0, d.at - 900), d.at)) && /popKey\([^]*?step\.then === "close"\) close\(/.test(d.src) && FOCUS.test(d.src);
     case "window":
       return /addEventListener\("keydown"|watchEscape\(window/.test(d.src) && ESCAPE.test(d.src);
     case "layer":

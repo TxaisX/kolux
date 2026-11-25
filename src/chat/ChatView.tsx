@@ -172,7 +172,7 @@ export default function ChatView({ pane, agent, preview = null, pending = [], ho
   };
   // CHAT-022: the agent's multiple-choice question as a card; its answer is typed in as the option numbers (question.ts).
   const waiting = stateOf ? stateOf(key) === "waiting" : hookState === undefined ? undefined : hookState === "waiting";
-  const asking = agent === "claude" || agent === "openclaude" || agent === "codex" ? openQuestion(items, waiting) : null;
+  const asking = agent === "claude" || agent === "opencode" || agent === "codex" ? openQuestion(items, waiting) : null;
   const askId = useRef<string | undefined>(undefined);
   askId.current = asking?.id;
   const [typing, setTyping] = useState<{ id: string; cancel: () => void } | null>(null);
@@ -377,6 +377,7 @@ function ChatRow({ row, onImage }: { row: Row; onImage: (src: string) => void })
     return (
       <div className={`chat-msg user pending${row.failed ? " failed" : ""}`}>
         <div className="chat-text">{row.text}</div>
+        {row.held && !row.failed && <div className="chat-status" role="status">Waiting to send</div>}
         {row.failed && <div className="chat-fail" role="alert">This message did not arrive. Look at the terminal.</div>}
       </div>
     );

@@ -34,6 +34,8 @@ import { PAGES, openSettings, type PageId } from "../settings/pages";
 import { paletteRows } from "../switcher/accounts";
 import { focusIn, panesIn, sameDir, underDir, viewOf } from "../workspaces";
 import { startDirOf } from "../projects/worktreeGrid";
+import { withUserTitle } from "../shell/window/chatRecord";
+import { EVERYDAY_CHATS_FIELD, everydayChatsOf, setEverydayUserName } from "../projects/everydayChats";
 import type { PaneNotice } from "./TerminalPane";
 import { accountLabel, accountPrompt, codexSetup, setupChanged } from "./accountChange";
 import { asksBeforeClose, busyCheck, closeQuestion } from "./closing";
@@ -308,7 +310,17 @@ export function paneActions(s: WindowState, _plumb: ReturnType<typeof useSetting
   ];
   // TERM-096: the open pane whose terminal has the printed handle (`term-<n>`), NaN when none does.
   const keyOfHandle = (h: string) => Number(Object.keys(ptys.current).find((k) => `term-${ptys.current[Number(k)]}` === h) ?? NaN);
-  const renamePane = (key: number, title: string | undefined) => setPanes((ps) => ps.map((p) => (p.key === key ? { ...p, title } : p)));
+  // A kept Everyday chat's record takes the same mark, so a name the user chose survives the tab being closed.
+  const renamePane = (key: number, title: string | undefined) => {
+    setPanes((ps) => withUserTitle(ps, key, title));
+    const rec = panes.find((x) => x.key === key)?.everyday;
+    if (!rec) return;
+    _plumb.saveSetting(EVERYDAY_CHATS_FIELD, (prev: unknown) => {
+      const list = everydayChatsOf(prev);
+      const after = setEverydayUserName(list, rec, title);
+      return after === list ? undefined : after;
+    });
+  };
   // TERM-014: closing a pane ends its program (the pane's own cleanup kills it); the next tab of
   // its cell takes over, else the neighbouring cells take the space; closing the last pane leaves
   // the workspace's empty placeholder.

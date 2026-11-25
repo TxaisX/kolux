@@ -74,6 +74,26 @@ test("a finished turn draws nothing of its own, and one that failed says how", (
   expect(stopped[1]).toMatchObject({ role: "assistant", kind: "interrupted" });
 });
 
+test("a stopped turn says the same word live as the reopened transcript does", () => {
+  // The Rust history reader writes "Interrupted" (chat.rs, opencode.rs); the live row must match it.
+  const stopped = reduce([], ev({ kind: "result", isError: true, subtype: "error_during_execution" }), 4, 4);
+  expect(stopped[0].text).toBe("Interrupted");
+});
+
+test("round 4: a queued message the engine says was cancelled is a notice with its errors text, never an Interrupted row", () => {
+  const text = "This message was not run: it was waiting when the run before it ended.";
+  const cancelled = reduce([], ev({ kind: "result", isError: true, subtype: "cancelled", errors: [text] }), 5, 5);
+  expect(cancelled).toHaveLength(1);
+  expect(cancelled[0]).toMatchObject({ role: "status", kind: "notice", details: text });
+  expect(cancelled[0].kind).not.toBe("interrupted");
+  expect(cancelled[0].text).not.toBe("Interrupted");
+  expect(cancelled[0].text).toBe("A message was not run.");
+  // with no errors text there is still a plain notice, and no empty details
+  const bare = reduce([], ev({ kind: "result", isError: true, subtype: "cancelled" }), 6, 6);
+  expect(bare[0]).toMatchObject({ kind: "notice", text: "A message was not run." });
+  expect(bare[0].details).toBeUndefined();
+});
+
 test("a refused tool call and a retried request are said in the chat", () => {
   const denied = reduce([], ev({ kind: "permissionDenied", toolName: "Bash", message: "Permission to use Bash was denied.", decisionReason: "Bash(rm:*) is denied" }), 7, 1);
   expect(denied[0]).toMatchObject({ role: "status", kind: "notice", text: "Claude was not allowed to use Bash.", details: "Permission to use Bash was denied.\nBash(rm:*) is denied" });

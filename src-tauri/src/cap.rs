@@ -27,9 +27,7 @@ pub fn env_set() -> bool {
 /// else is touched, and a second pass adds nothing.
 pub fn apply(program: Option<&str>, args: &mut Vec<String>, env: &mut Vec<(String, String)>, env_set: bool) {
     match program.and_then(crate::tools::credited_program) {
-        // Txais (2026-11-21): OpenClaude is Claude Code's CLI under another name, so it is held to the
-        // same window. A build that does not know the variable simply ignores it.
-        Some("claude") | Some("openclaude") => {
+        Some("claude") => {
             let explicit = args.iter().any(|a| a == "--autocompact" || a.starts_with("--autocompact="));
             if !env_set && !explicit {
                 env.push((CLAUDE_ENV.to_string(), WINDOW.to_string()));
@@ -118,16 +116,5 @@ mod tests {
         }
     }
 
-    // Txais (2026-11-21): OpenClaude runs Claude Code's CLI, so a chat or pane started on it is capped
-    // like Claude Code itself.
-    #[test]
-    fn openclaude_is_capped_the_way_claude_code_is() {
-        let mut env = vec![];
-        let mut args = s(&["--permission-mode", "bypassPermissions"]);
-        apply(Some("openclaude"), &mut args, &mut env, false);
-        assert_eq!(env, vec![(CLAUDE_ENV.to_string(), "200000".to_string())]);
-        let mut env = vec![];
-        apply(Some("openclaude"), &mut args, &mut env, true);
-        assert!(env.is_empty(), "the process environment already carries the variable");
-    }
+
 }

@@ -54,12 +54,6 @@ fn claude_asks_for_replay_right_after_the_permission_mode() {
     check_line("claude", "auto");
 }
 
-#[test]
-fn openclaude_asks_for_replay_right_after_the_permission_mode() {
-    check_line("openclaude", "bypassPermissions");
-    let a = chat_args("openclaude", Some("deepseek/deepseek-v4.1-flash-1017"), None, None);
-    assert!(a.windows(2).any(|w| w == ["--provider", OPENCLAUDE_PROVIDER]), "the gateway is still added: {a:?}");
-}
 
 #[test]
 fn only_chat_agents_ask_for_replay() {
@@ -67,7 +61,7 @@ fn only_chat_agents_ask_for_replay() {
         let a = chat_args(agent, None, None, None);
         assert!(!a.iter().any(|x| x == REPLAY), "{agent:?} is not a chat agent: {a:?}");
     }
-    for agent in CHAT_AGENTS {
+    for agent in STREAM_AGENTS {
         assert!(chat_args(agent, None, None, None).iter().any(|x| x == REPLAY), "{agent}");
     }
 }
@@ -186,7 +180,7 @@ fn reply_at(evs: &[ChatEvent], words: &str) -> Option<usize> {
 
 #[test]
 fn a_sent_message_comes_back_as_a_user_event_before_its_reply() {
-    for agent in CHAT_AGENTS {
+    for agent in STREAM_AGENTS {
         let r = run();
         let id = format!("r-{agent}");
         r.engines.start(&id, r.spec(agent), None, r.sink()).unwrap();
@@ -206,14 +200,20 @@ fn a_sent_message_comes_back_as_a_user_event_before_its_reply() {
     }
 }
 
-// After a handoff an OpenClaude chat sends the note inside the first message (`note_message`), so the
-// echo carries the note envelope with the user's own words last; the page strips the envelope.
+// After a handoff a Claude Code chat started through a `.cmd` shim sends the note inside the first
+// message (`note_message`), so the echo carries the note envelope with the user's own words last; the
+// page strips the envelope.
+#[cfg(windows)]
 #[test]
 fn the_replayed_first_message_after_a_note_keeps_the_users_words_last() {
-    let r = run();
+    let mut r = run();
+    let shim = r.dir.join("claude.cmd");
+    std::fs::write(&shim, format!("@\"{}\" %*\r\n", node().display())).unwrap();
+    let launch = Launch { program: shim, pre_args: vec![r.dir.join("stub.js").to_string_lossy().into_owned()] };
+    r.engines = Engines::new(Config { launch: Some(launch), idle: IDLE_SLEEP, busy_idle: BUSY_IDLE_SLEEP, stop_grace: STOP_GRACE });
     let note = r.dir.join("note.md");
     std::fs::write(&note, "# Handoff\n\n## Left to do\n- wire the readers").unwrap();
-    let mut spec = r.spec("openclaude");
+    let mut spec = r.spec("claude");
     spec.handoff_note = Some(note);
     r.engines.start("n1", spec, None, r.sink()).unwrap();
     r.engines.send("n1", "first words", &[]).unwrap();

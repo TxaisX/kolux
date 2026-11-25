@@ -144,32 +144,7 @@ const BUILT_IN: Record<string, ModelChoice[]> = {
     { id: "grok-code-fast-1", label: "Grok Code Fast 1" },
     { id: "grok-4", label: "Grok 4" },
   ],
-  // 2026-11-21: the Everyday chat opens OpenClaude, and OpenClaude is the one engine that reaches every
-  // model we run. Its list is OpenRouter's ids, so one key answers for Claude, GPT, Gemini, Grok and
-  // DeepSeek alike, and a model can be switched without opening another program. The first row is the
-  // cheap default a new chat starts on; the rest are a current model from each family.
-  openclaude: [
-    { id: "deepseek/deepseek-v4.1-flash-1017", label: "DeepSeek V4.1 Flash" },
-    { id: "anthropic/claude-opus-5.5", label: "Claude Opus 5.5" },
-    { id: "anthropic/claude-sonnet-5.5", label: "Claude Sonnet 5.5" },
-    { id: "anthropic/claude-haiku-5.5", label: "Claude Haiku 5.5" },
-    { id: "openai/gpt-5.5", label: "GPT-5.5" },
-    { id: "openai/gpt-5.4-mini", label: "GPT-5.4 mini" },
-    { id: "openai/gpt-5.3-codex", label: "GPT-5.3 Codex" },
-    { id: "google/gemini-3.8-flash", label: "Gemini 3.8 Flash" },
-    { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro" },
-    { id: "x-ai/grok-4.7", label: "Grok 4.7" },
-  ],
 };
-
-/** OpenClaude's effort levels (its `--effort` flag). These are the same words Claude Code uses, so an
- *  effort picked for one chat means the same thing in the next. */
-const OPENCLAUDE_EFFORTS = ["low", "medium", "high", "xhigh", "max"];
-for (const m of BUILT_IN.openclaude) Object.assign(m, { efforts: OPENCLAUDE_EFFORTS, effortFlag: "--effort" });
-
-/** The model a new OpenClaude chat starts on before the user picks another: cheap, quick, and already
- *  proven against this gateway. */
-export const OPENCLAUDE_DEFAULT = "deepseek/deepseek-v4.1-flash-1017";
 
 /** SESS-029: Grok's effort levels, up to extra-high; left untouched it stays at Grok's own high. */
 const GROK_EFFORTS = ["low", "medium", "high", "xhigh"];
@@ -198,24 +173,19 @@ function listOf(agentId: string): ModelChoice[] | undefined {
 export const DEFAULT_MODEL = "default";
 
 /** The model row for an agent: its built-in list plus the program's own default, which is an
- * explicit pick that adds no model flag. OpenClaude has no default row (2026-11-21): it has no provider
- * profile to fall back to, and an Everyday chat always names a model. ACCT-032: an agent without a
- * built-in list has no model step at all (empty). */
+ * explicit pick that adds no model flag. ACCT-032: an agent without a built-in list has no model step
+ * at all (empty). The chat page's own list is not here: it comes from OpenCode (chat/opencode.ts). */
 export function modelsFor(agentId: string): ModelChoice[] {
   const list = listOf(agentId);
   if (!list) return [];
-  return agentId === "openclaude" ? [...list] : [...list, { id: DEFAULT_MODEL, label: "Program default" }];
+  return [...list, { id: DEFAULT_MODEL, label: "Program default" }];
 }
 
-/** The gateway OpenClaude's list comes from; the Rust chat engine names the same one
- *  (`chat_engine::OPENCLAUDE_PROVIDER`). A picked OpenClaude model is an OpenRouter id, so its start
- *  line has to say where to route it, in the chat page and in a terminal alike. */
-export const OPENCLAUDE_PROVIDER = "openrouter";
-
-/** The arguments a model pick adds to the start line; none for the program's own default. */
-export function modelArgs(model: string | null, agentId?: string | null): string[] {
+/** The arguments a model pick adds to the start line; none for the program's own default. `agentId`
+ *  is kept for the callers that pass it: every agent takes the same flag. */
+export function modelArgs(model: string | null, _agentId?: string | null): string[] {
   if (model === null || model === DEFAULT_MODEL) return [];
-  return agentId === "openclaude" ? ["--provider", OPENCLAUDE_PROVIDER, "--model", model] : ["--model", model];
+  return ["--model", model];
 }
 
 /** The seat's model as a choice, when its agent lists it. */

@@ -24,6 +24,10 @@ export type EverydayChat = {
   effort?: string;
   cwd: string;
   session?: string;
+  /** The older Claude conversation this chat continues on OpenCode: its read-only transcript shows above the new chat. */
+  legacy?: string;
+  /** The user chose `name` by hand (the sidebar, the tab menu): the chat's own titles never replace it. */
+  nameByUser?: true;
   at: number;
 };
 
@@ -48,6 +52,7 @@ export function readEverydayChats(s: Record<string, unknown>): EverydayChat[] {
     const model = text(r.model);
     const effort = text(r.effort);
     const session = text(r.session);
+    const legacy = text(r.legacy);
     out.push({
       id,
       ...(name === null ? {} : { name }),
@@ -56,6 +61,8 @@ export function readEverydayChats(s: Record<string, unknown>): EverydayChat[] {
       ...(effort === null ? {} : { effort }),
       cwd,
       ...(session === null ? {} : { session }),
+      ...(legacy === null || session === null ? {} : { legacy }),
+      ...(r.nameByUser === true && name !== null ? { nameByUser: true as const } : {}),
       at: typeof r.at === "number" && Number.isFinite(r.at) ? r.at : 0,
     });
   }
@@ -85,14 +92,21 @@ export function putEverydayChat(list: readonly EverydayChat[], rec: EverydayChat
   return sameChats(list, next) ? (list as EverydayChat[]) : sortChats(next);
 }
 
-/** The list with one chat's conversation id written down; the same list when it already says so. */
-export function setEverydaySession(list: readonly EverydayChat[], id: string, session: string): EverydayChat[] {
+/** The list with one chat's conversation id written down; the same list when it already says so. `legacy` is the
+ *  older Claude conversation this one continues (kept in its own field); `null` clears it, and leaving it out
+ *  keeps whatever the row has. */
+export function setEverydaySession(list: readonly EverydayChat[], id: string, session: string, legacy?: string | null): EverydayChat[] {
   if (!session) return list as EverydayChat[];
   let changed = false;
   const next = list.map((c) => {
-    if (c.id !== id || c.session === session) return c;
+    if (c.id !== id) return c;
+    const old = legacy === undefined ? c.legacy : (legacy ?? undefined);
+    if (c.session === session && c.legacy === old) return c;
     changed = true;
-    return { ...c, session };
+    const out: EverydayChat = { ...c, session };
+    if (old) out.legacy = old;
+    else delete out.legacy;
+    return out;
   });
   return changed ? next : (list as EverydayChat[]);
 }
@@ -122,14 +136,46 @@ export function touchEverydayChat(list: readonly EverydayChat[], id: string, now
 }
 
 /** The list with one chat named; the same list when the name is already that. An empty name is ignored. */
-export function setEverydayName(list: readonly EverydayChat[], id: string, name: string): EverydayChat[] {
-  const clean = name.trim();
-  if (!clean) return list as EverydayChat[];
+export function setEverydayName(list: readonly EverydayChat[], id: string, name: string | null): EverydayChat[] {
+  const clean = name === null ? null : name.trim();
+  if (clean === "") return list as EverydayChat[];
   let changed = false;
   const next = list.map((c) => {
-    if (c.id !== id || c.name === clean) return c;
+    // A name the user chose is not replaced by the chat's own title.
+    if (c.id !== id || c.nameByUser) return c;
+    if (clean === null) {
+      // `null`: the chat it named has been left, so the row reads New chat again.
+      if (c.name === undefined) return c;
+      changed = true;
+      const out = { ...c };
+      delete out.name;
+      return out;
+    }
+    if (c.name === clean) return c;
     changed = true;
     return { ...c, name: clean };
+  });
+  return changed ? next : (list as EverydayChat[]);
+}
+
+/** The list with one chat named by the user (marked, so the chat's own titles never replace it). `undefined`
+ *  clears the mark and leaves the name, and the chat names itself again from its next title. Blank text is ignored. */
+export function setEverydayUserName(list: readonly EverydayChat[], id: string, name: string | undefined): EverydayChat[] {
+  const clean = name === undefined ? undefined : name.trim();
+  if (clean === "") return list as EverydayChat[];
+  let changed = false;
+  const next = list.map((c) => {
+    if (c.id !== id) return c;
+    if (clean === undefined) {
+      if (!c.nameByUser) return c;
+      changed = true;
+      const out = { ...c };
+      delete out.nameByUser;
+      return out;
+    }
+    if (c.name === clean && c.nameByUser) return c;
+    changed = true;
+    return { ...c, name: clean, nameByUser: true as const };
   });
   return changed ? next : (list as EverydayChat[]);
 }
@@ -146,4 +192,4 @@ export const everydayChatName = (c: EverydayChat): string => c.name || "New chat
 const sortChats = (list: readonly EverydayChat[]): EverydayChat[] => [...list].sort((a, b) => b.at - a.at);
 
 const sameChats = (a: readonly EverydayChat[], b: readonly EverydayChat[]): boolean =>
-  a.length === b.length && a.every((c, i) => c.id === b[i].id && c.name === b[i].name && c.agent === b[i].agent && c.model === b[i].model && c.effort === b[i].effort && c.session === b[i].session && c.cwd === b[i].cwd && c.at === b[i].at);
+  a.length === b.length && a.every((c, i) => c.id === b[i].id && c.name === b[i].name && c.agent === b[i].agent && c.model === b[i].model && c.effort === b[i].effort && c.session === b[i].session && c.legacy === b[i].legacy && c.cwd === b[i].cwd && c.at === b[i].at);

@@ -109,7 +109,8 @@ export function userWords(text: string): string {
 
 /** The page's count of messages sent and not yet answered, after one event. Claude Code answers each
  *  queued message with a result of its own, so the working line stays until the count is back to 0. A
- *  stop, or the process ending, leaves nothing waiting (a stop cancels what was queued). A reply while
+ *  stop, or the process ending, leaves nothing waiting (a message the stop left unrun gets its own cancelled
+ *  result, which is OpenCode's confirmed word, or runs with the next send and is echoed then). A reply while
  *  nothing is waiting is a turn the page did not count (a message sent after a Stop, or a turn the agent
  *  started itself), so it waits for that turn's result; a subagent's reply is not a new turn. */
 export function stillWaiting(waiting: number, ev: ChatEvent): number {
@@ -208,7 +209,9 @@ function heard(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number
 function ended(prev: readonly ChatItem[], ev: ChatEvent, at: number, seq: number): ChatItem[] | null {
   if (!ev.isError) return null;
   // A stop ends the turn with this subtype; the row marks the turn so no "Worked for" line is claimed for it.
-  if (ev.subtype === "error_during_execution") return [...prev, { id: `stopped-${seq}`, role: "assistant", kind: "interrupted", text: "Interrupted before it finished.", at }];
+  if (ev.subtype === "error_during_execution") return [...prev, { id: `stopped-${seq}`, role: "assistant", kind: "interrupted", text: "Interrupted", at }];
+  // A message that was queued behind a run and never ran: the engine's own words say why, shown as the detail.
+  if (ev.subtype === "cancelled") return [...prev, { id: `result-${seq}`, role: "status", kind: "notice", text: "A message was not run.", details: (ev.errors ?? []).join("\n") || undefined, at }];
   return [...prev, { id: `result-${seq}`, role: "status", kind: "notice", text: `The turn ended with an error (${ev.subtype || "unknown"}).`, details: (ev.errors ?? []).join("\n") || undefined, at }];
 }
 

@@ -206,12 +206,12 @@ export default function PlusMenu({ agents, defaultId = "", onPick, onSetDefault,
             <span className="name">{more ? "Show fewer agents" : `Show more agents (${folded.length})`}</span>
           </button>
         )}
-        {/* Slice 1 of chat panes: the same Claude as the row above, shown as a chat instead of a terminal.
-            It is offered only when Claude is installed, so it can never be a row that cannot start. */}
-        {onChat && agents.some((a) => a.id === "claude" && a.installed) && (
-          <button role="menuitem" className="menu-item" data-testid="new-chat" onClick={onChat} title="A Claude chat in this folder, with no terminal behind it">
+        {/* Slice 1 of chat panes: a chat instead of a terminal. It runs through OpenCode (2026-11-24) and is
+            offered only when OpenCode is installed, so it can never be a row that cannot start. */}
+        {onChat && agents.some((a) => a.id === "opencode" && a.installed) && (
+          <button role="menuitem" className="menu-item" data-testid="new-chat" onClick={onChat} title="A chat in this folder, with no terminal behind it. You pick the model inside the chat.">
             <span className="agent-mark">
-              <VendorMark agent="claude" size={13} />
+              <VendorMark agent="opencode" size={13} />
             </span>
             <span className="name">New chat</span>
             <span className="muted">no terminal</span>

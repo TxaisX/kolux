@@ -1,9 +1,16 @@
-# Chat engine (Claude, stream-json)
+# Chat engine (OpenCode, and Claude stream-json)
 
-Written 2026-11-19. Code: `src-tauri/src/chat_engine/` (`mod.rs` process and commands,
-`events.rs` the typed reading of each line, `tests.rs`, `stub.js`, `fixtures/`).
+Written 2026-11-19; OpenCode added 2026-11-24. Code: `src-tauri/src/chat_engine/` (`mod.rs` process
+and commands, `opencode.rs` the OpenCode server, its chats and the translation of its events,
+`events.rs` the typed reading of each line, `tests.rs`, `opencode_tests.rs`, `stub.js`, `fixtures/`).
 
-Each chat is one hidden `claude` process. The page talks to it through four Tauri commands and
+Two agents run a chat. `opencode` (2026-11-24) is what the chat page starts: every model it offers,
+Claude's included, runs through OpenCode, and each chat is one OpenCode session on a server the
+engine shares between all chats (see "OpenCode chats"). `claude` is Claude Code's own stream-json
+process, one hidden process per chat, described under "The process". The page hears both the same
+way: the commands, the event name and the payload shapes below are the same for the two.
+
+Each `claude` chat is one hidden `claude` process. The page talks to it through four Tauri commands and
 hears back on one Tauri event. (The close command is `chat_end`: the terminal-pane chat still
 registers `chat_close` until it retires; rename then if wanted.) Any number of chats can run at once; they are keyed by the page's
 own chat id.
@@ -19,16 +26,10 @@ Sources (read 2026-11-19):
 
 ```
 claude -p --input-format stream-json --output-format stream-json --verbose --permission-mode auto [--model <m>] [--resume <session id>]
-openclaude -p --input-format stream-json --output-format stream-json --verbose --permission-mode bypassPermissions [--provider openrouter] [--model <m>] [--resume <session id>]
 ```
 
-- Two agents run a chat (2026-11-20), both with Claude Code's stream-json CLI: `claude`, and
-  `openclaude` for the other models. `chat_start` refuses any other id.
-- OpenClaude's permission mode is `bypassPermissions`, not `auto`: measured 2026-11-20, `auto` is
-  not a mode it knows and it falls back to `default`, where every tool call is refused, while
-  `bypassPermissions` acts with no prompt — the same rule as `auto` (DT-C283).
-- A picked OpenClaude model comes from the window's OpenRouter list, so it is started with
-  `--provider openrouter`; "Program default" adds neither and keeps OpenClaude's own setup.
+- This section is the `claude` agent only. `chat_start` takes `claude` or `opencode` and refuses
+  any other id.
 - The program is found on PATH by its agent id (PATHEXT included, so a `claude.cmd` shim works; a
   shim runs through the system `cmd.exe /d /c`). Started with the no-console-window helper,
   stdin/stdout/stderr piped.
@@ -41,17 +42,359 @@ openclaude -p --input-format stream-json --output-format stream-json --verbose -
 - A model name may hold only letters, digits and `-._:[]/@`; a session id only letters, digits
   and `-` (both can reach `cmd.exe`). Anything else is refused before a process starts.
 
+## OpenCode chats
+
+Added 2026-11-24. Measured against `opencode` 2.4.1.
+
+**Transport.** One `opencode serve --hostname 127.0.0.1 --port 0` for the whole app, started the
+first time a chat, the model list or a session list needs it, with no console window. The system
+picks the port and the server names it in its first line (`server listening on http://127.0.0.1:<port>`).
+Kolux makes a fresh password for each start (32 bytes from the system's secure random source, as
+hex), passes it as `OPENCODE_PASSWORD` (an `OPENCODE_SERVER_PASSWORD` or `OPENCODE_SERVER_USERNAME`
+in the environment is removed), keeps it in memory only and sends it as HTTP Basic auth (user
+`opencode`) on every call. The programs OpenCode starts inherit the variable; it opens only this
+loopback server. An npm `opencode.cmd` shim is not run through `cmd.exe`: the `opencode.exe` it names
+is started directly, the same way a terminal pane resolves a shim. Events
+arrive on one long `GET /api/event` stream (server-sent events) and are routed to every chat that has
+the session open (one session may be open in two chats). Each chat is one OpenCode session.
+
+- No request is sent to a fresh server before its event stream is open (its first event has
+  arrived); a caller waits up to 10 seconds for it, and a second caller waits for a start under way
+  instead of making another. The start itself runs with no lock held.
+- A stream that closes is opened again. One that fails to open (a refused status, no connection) is
+  tried again after a wait that doubles each time (from 300 ms, at most 10 s); after 8 failures in a
+  row the server is ended and each chat gets a `stderr` line saying why, then `exit {reason: "crashed"}`.
+  A stream that opens but closes within 5 seconds having carried nothing but `server.*` events
+  (the greeting, a heartbeat) counts as a failure too. A stream that carried any other event (of any
+  session, or a permission question), or stayed open 5 seconds, is never counted, however often it
+  drops, so a server that works is never ended for its stream.
+- A turn the page was told is over before OpenCode said so (a stop that got no answer in time, a
+  lost stream) stays over: that run's late events are dropped until OpenCode says the run ended or
+  the next run starts, and that run's own end adds no second `result`.
+- **Waiting messages: one `result` per message, from OpenCode's own word only.** OpenCode keeps a
+  sent message in the session's inbox until a run takes it up (`session.inbox.delivered`) or it is
+  cancelled (`session.inbox.cancelled`). Nothing else removes it: a run that succeeds, fails or is
+  interrupted leaves the inbox alone, and a message left waiting after a stop is taken up by the
+  next run, together with the next message. So the engine keeps a waiting message until one of
+  those two events, and never answers one on a guess while the stream is live:
+  - taken up: `user` (the echo), and one `result` when the run that took it up ends;
+  - cancelled: one `result {subtype: "cancelled"}`;
+  - a run that ends with a message still waiting ends only the messages it took up.
+  A message is known as waiting from the answer to its `prompt` call (the inbox item's id), so it
+  does not depend on `session.inbox.enqueued` being heard. Only a user's message counts: OpenCode's
+  own inbox items (a compaction, a synthetic note) add no `result`.
+- **Only a chat's own messages are its own.** One session can be open in two chats, and both hear
+  every event of it. A message belongs to the chat whose `prompt` call OpenCode answered with its
+  inbox id, and to no other. For a message another chat sent, a chat only mirrors: the `user` echo
+  and the reply are shown, it gets no `result` for the message and no `cancelled`, the message does
+  not make it busy, and its Stop and its close leave that run and that waiting message alone. Two
+  fallbacks, both from OpenCode's answer to the chat's own call: a `prompt` call that got no answer
+  makes the next message heard queued within 5 seconds with the same text that chat's own (a message
+  with another text is not taken, and does not use the claim up); a `prompt` call OpenCode accepted
+  without naming an inbox id makes the chat count every message of the session as its own from then
+  on (it cannot tell them apart). A message OpenCode settles before the answer to its `prompt` call
+  is applied (it cancels it, or a run takes it up and ends) gets its one `result` when that answer
+  names it: `cancelled`, or the plain outcome of that run. That holds for a message never heard
+  queued too: a delivery that names an unknown message while one of the chat's `prompt` calls is on
+  its way is kept until that call's answer says whose it is. If the answer comes while the run still
+  goes on, the run is the chat's own from there and its end gives the message's `result`.
+- **A run that takes up a message while the chat sends may be the chat's own.** OpenCode can start
+  the run, deliver the message and stream the reply before the `prompt` call is answered. So a run
+  that takes up a message not known to be the chat's own while one of the chat's `prompt` calls is
+  on its way counts as possibly the chat's own: its Stop and its close interrupt it. So does a run
+  that starts while such a call is on its way, before any delivery is heard (OpenCode publishes a
+  run's start before its delivery). The answer
+  settles it: it names that message (the run is the chat's own) or another one (the run is another
+  chat's, and is left alone from then on). An answer that names a message still waiting, while the
+  run has taken nothing up yet, leaves the doubt standing: the run is about to take that message
+  up. The same holds in the other order: a run that starts while a message of the chat waits
+  (answered, not delivered yet) may be its own. That doubt ends with the delivery of the message
+  (the run is the chat's own), with the delivery of a queued message of another chat while no call
+  of this chat is on its way (the run is that chat's), or with OpenCode cancelling the message.
+  Before 2026-11-24 the answer dropped the doubt, so a Stop pressed between the answer and the
+  delivery answered `stopped` at once and the reply streamed. A call that ends with no answer settles nothing, so the
+  run stays stoppable until it ends. A message taken up before the send began does not count, and
+  a send that ends before its `prompt` call (the server did not start, the model pick failed) drops
+  the doubt. This is the everyday single-pane case, and it wins over the two-pane rule: with one
+  session in two chats, a Stop in the short time between a chat's send and its answer also
+  interrupts a run that took up the other chat's message in that same time.
+- **A run is known from its start or from its own events.** A chat opened in the middle of a run
+  never hears `session.execution.started`. An event that starts or carries on a piece of the run's
+  work tells it a run is going on: `session.step.started`, `session.text.started` and `.delta`,
+  `session.reasoning.started` and `.delta`, `session.tool.input.started` and `.delta`,
+  `session.tool.called`, `session.tool.progress`, or the delivery of a waiting message. An event
+  that ends a piece (`*.ended`, `session.tool.success` or `.failed`, `session.step.failed`) does
+  not: one heard late, after the run's own end, must not leave the chat running for good. Whose run
+  it is depends on what the chat had in the session when it first heard of the run:
+  - nothing of its own waiting: the run was going on before the chat sent anything, so it is
+    another chat's. A message the chat sends behind it waits like any other, and the chat's Stop
+    and close leave that run alone;
+  - a message of its own waiting, and nothing saying the run is another chat's (it took up no
+    message this chat knows of): the run's start and the delivery were missed (the stream was not
+    open yet, or was lost), and the run may be that message's. It counts as the chat's own for its
+    Stop and close.
+  Not covered: a chat that has heard nothing at all of a run going on cannot know of it, and with a
+  message of its own waiting its Stop or close posts the interrupt.
+- **A run's end gives a chat as many `result`s as its page counted for that run.** The page counts
+  1 for each send, takes 1 off for each `result`, and counts 1 for a reply (`assistant`) that comes
+  while it counts 0. So a chat that counts only its own messages gets, when a run ends:
+  - one `result` for each message of its own the run took up;
+  - plus one when its page drew the run as a turn: a reply was shown while the chat had nothing of
+    its own on its way (a `prompt` call not answered yet), waiting, or taken up by the run. That is
+    a run another chat started and this one mirrors. A message the chat sends after that, steered
+    into the same run, adds its own `result`: two in all;
+  - when both are zero, one `result`, which closes what was mirrored, unless a message of the
+    chat's own is on its way or waiting. Then the run ends there with no `result`: the page counts
+    1 for that message, and would take the run's `result` for it. The message gets its one `result`
+    from the run that takes it up.
+  The first `result` carries the run's outcome; any further one is a plain `success`. A run that
+  took up messages of both chats gives each chat one `result` per message of its own. A chat opened
+  in the middle of a run never hears it start; once it has shown a reply of the run, the run's end
+  gives it its `result` like any other. A Stop that leaves the run going (it is not this chat's)
+  sets the page's count to 0, so the next reply shown draws the turn afresh. A message counts as on
+  its way from the start of the chat's send, before the server is woken and a waiting model pick is
+  posted, as the page counts it from there; a send that ends before its `prompt` call (the server
+  did not start, the pick was not applied) takes it back, as the page does on the send's error. A
+  lost stream ends a turn the page drew of a mirrored run too (`connection_lost`), so the page is
+  not left counting a run whose end may be missed.
+- **After a lost stream** the engine asks OpenCode what happened in the gap instead of guessing. For
+  each chat with a cut run or a waiting message it reads `GET /api/session/active` (the sessions
+  running now), `GET /api/session/{id}/inbox` (the messages still waiting) and, for each waiting
+  message no longer in the inbox, `GET /api/session/{id}/message/{messageID}` (a delivered message
+  keeps its inbox id). Then, per message:
+  - still in the inbox: it stays waiting, with no `result`;
+  - a saved message, session still running: the run is followed from here as that message's turn
+    (`user` now, its `result` when the run ends);
+  - a saved message, session not running: `user` and exactly one `result` (an error one when the
+    session's last message is an idle marker that says the run failed or was interrupted);
+  - neither in the inbox nor a saved message: one `result {subtype: "cancelled"}`.
+  A session that is not running has no cut run left to wait for, whatever its last message is (a
+  run ended by a shutdown writes no idle marker). A read that gets no answer settles nothing:
+  unknown is never taken as idle. A message heard on the stream meanwhile is left to the stream.
+  Two cases where the reads and the stream disagree in time:
+  - a run's end is heard after OpenCode was asked and before its answer is applied: "still running"
+    is old news, so the message gets its one `result` now instead of a turn with no end to come;
+  - the reads were ahead of the stream, and the stream then replays the run of a message already
+    given its `result`: that run adds nothing (its events are dropped until its end).
+  The same questions are asked in two more cases, on the same rules: when a server went away with
+  a run cut or a message waiting, the next server is asked as soon as its stream opens; and when a
+  session commits a revert (`session.revert.committed`), which removes waiting messages with no
+  `session.inbox.cancelled` for them.
+  An answer for a chat that closed meanwhile is not sent, and nothing of it follows the chat's
+  `exit`.
+- **Nothing follows a chat's `exit`.** Every event a chat sends after it opened (a stream event's,
+  the answer about a gap, a lost stream's `result`, the end of a Stop, a `stderr` line from Kolux,
+  a server's end, and what a send or a model pick tells the page: `started` after a wake, `init`,
+  the `stderr` line of a refused pick) is sent with the chat's lock held, after checking the chat is
+  not closed. A close
+  marks the chat closed under the same lock before it sends `exit`, so it waits for an event being
+  sent and nothing comes after it. The sink (a Tauri `emit`) takes no lock of the engine, so
+  holding the chat's lock over it cannot deadlock.
+- Once the app is quitting, nothing starts the server again (a late send or model read is refused).
+
+Why a shared server and not one `opencode run` per turn: sessions, the model list, delete and history
+all come from the same API; a model or effort change between turns and an interrupt are single calls;
+and a process per turn would pay OpenCode's setup (about 31k to 35k tokens of instructions, plus the
+MCP servers starting) on every message and has no way to stop or queue a turn.
+
+**Calls used.**
+
+| Call | For |
+|---|---|
+| `POST /api/session` | a new chat (`directory` is the chat's `cwd`) |
+| `GET /api/session/{id}` | a resumed chat: the session must exist |
+| `POST /api/session/{id}/model` `{model: {id, providerID, variant?}}` | the model and the effort (`variant`), at open and whenever the page picks another pair |
+| `POST /api/session/{id}/prompt` | one user message; the answer's `data.id` is its inbox id |
+| `POST /api/session/{id}/interrupt` | Stop |
+| `DELETE /api/session/{id}/inbox/{inboxID}` | Stop: cancel a message still waiting |
+| `GET /api/session/active`, `GET /api/session/{id}/inbox`, `GET /api/session/{id}/message/{messageID}`, `GET /api/session/{id}/message?limit=1&order=desc` | after a lost stream: what ran, what still waits, how the last run ended |
+| `GET /api/session?directory=` | `chat_sessions` |
+| `DELETE /api/session/{id}` | `chat_session_delete` |
+| `GET /api/session/{id}/message` | `chat_history` (the newest 200 messages) |
+| `GET /api/model` | `chat_models` (it can answer with nothing in the server's first moments, so an empty answer is asked again and never cached; a list read from a server that ended meanwhile is not cached either) |
+
+- A model id is `provider/model`, the string `opencode models` prints, for example
+  `openrouter/deepseek/deepseek-v4.1-flash-1017`: the first segment is the `providerID`, the rest the `id`.
+- The model and the effort can change between turns of one chat with no restart: `chat_start` on a
+  chat id that is already open on the same folder and the same session only posts the new pair and
+  emits a fresh `init`. With the server asleep the pick is kept and applied before the next message.
+  If OpenCode refuses it then (a 4xx answer), the message is not sent, the chat gets a `stderr` line
+  saying so, the pick is dropped and the chat shows the session's own model again (a fresh `init`),
+  so the next message goes. The chat's model is only ever replaced by one OpenCode names: a session
+  read that names none leaves the last model OpenCode took from this chat, and if the read fails
+  nothing is changed and the pick stays waiting. A pick that got
+  no answer at all, or a server error (5xx), stays waiting for the next send too. A new pick made
+  while the server is up replaces a pick still waiting only once OpenCode has taken the new one; if
+  that call fails, the older pick still waits. A resumed chat whose pick is refused still opens, on
+  the session's own model, with a `stderr` line. A resumed chat whose pick got no answer or a
+  server error opens too, with a `stderr` line saying it is still on its old model; the pick waits
+  for the next send.
+- Efforts are per model and come from the model list (`efforts`). Seen 2026-11-24: DeepSeek V4.1
+  Flash `none, low, high, max`; Claude Opus 5.5 `low, medium, high, xhigh, max`; GPT-5.5 `none, low,
+  medium, high, xhigh`; some models none.
+- Permission questions (`permission.asked`) are answered `once` by the engine, so a chat acts with
+  no prompt: the same rule as the `claude` agent's `auto` mode. Every question on this private
+  server is answered, whatever its session (a subagent asks from a session of its own that no chat
+  has open). `init.permissionMode` says `bypassPermissions`.
+- Environment: one fixed set for every start, whichever chat or command wakes the server: the app's
+  own, plus the sign-in variables, plus the Everyday folder's `GIT_CEILING_DIRECTORIES` rule. A
+  pane's `extraEnv` is not carried into an OpenCode chat: the shared server cannot take variables
+  per session.
+- Pictures are not sent to an OpenCode chat: `chat_send` with `images` is refused for it.
+
+**Event mapping.** The page gets the same `chat-event` payloads as for `claude`.
+
+| OpenCode | `chat-event` |
+|---|---|
+| chat opened, or the server woken for it | `started {pid, resumed}` (the server's pid) |
+| session created, resumed, or given another model or effort | `init {sessionId, cwd, model, permissionMode: "bypassPermissions", effort, raw}`; `sessionId` is OpenCode's session id |
+| `session.inbox.enqueued` | remembered (a user's message only) |
+| `session.inbox.delivered` | `user {text: [the message]}` for a remembered message; nothing for any other item |
+| `session.inbox.cancelled` | `result {subtype: "cancelled", isError: true, errors: [why it was not run]}` for a remembered message; nothing otherwise |
+| `session.inbox.delivery.changed` | nothing |
+| `session.execution.started`, `session.step.started`, `session.text.started`, `session.reasoning.started`, `session.tool.input.started` | nothing |
+| `session.text.delta`, `session.reasoning.delta` | `assistant` with every block of the message so far (`messageId` is OpenCode's assistant message id, `model` is `providerID/id`), at most one per 80 ms per message |
+| `session.text.ended`, `session.reasoning.ended`, `session.tool.called` | `assistant`, always |
+| `session.tool.success`, `session.tool.failed` | `user {toolResults: [{toolUseId, output, isError}]}` (output capped) |
+| `session.step.ended` | `assistant` with `usage`; the cost is summed for the turn |
+| `session.step.failed` | the error is remembered for the turn's `result` |
+| `session.retry.scheduled` | `apiRetry` |
+| `session.compaction.ended` | `compactBoundary {trigger}` |
+| `session.execution.succeeded` | `result {subtype: "success", sessionId, numTurns, durationMs, totalCostUsd, usage, result}`, and one more success `result` for each further message delivered in that run. A message still waiting gets none: it stays waiting |
+| `session.execution.interrupted` | `result {subtype: "error_during_execution", isError: true}`, and a plain success `result` for each further message delivered in that run. A message still waiting stays waiting (OpenCode keeps it) |
+| `session.execution.failed` | `result {isError: true, subtype: the error's type or "failed", errors: [message]}`, and a plain success `result` for each further message delivered in that run. A message still waiting stays waiting (OpenCode keeps it) |
+| `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.progress`, `session.usage.updated` | dropped |
+| any other session event | `raw {line: the event type, json}` |
+| the event stream is lost during a turn | `result {isError: true, subtype: "connection_lost"}` |
+
+- Tool names are mapped to the names the page already groups (`bash` to `Bash`, and so on), so a
+  tool row reads the same in both agents.
+- `handoff` is never emitted for an OpenCode chat: OpenCode compacts a long session itself.
+
+**Stop.** `chat_stop` posts the interrupt and waits the stop grace for the turn to end:
+`stopped {how: "interrupt"}` when it does, `stopped {how: "ended"}` when it does not. The shared
+server is never ended for one chat's stop. A run the page was already told is over (a lost stream,
+an earlier stop with no answer) is still interrupted. A Stop acts only on the chat's own messages
+(see "Only a chat's own messages are its own"). The interrupt is posted in three cases:
+
+1. The run going on is this chat's own: it took up a message of this chat.
+2. The run going on may be this chat's own with nothing saying so yet: it took up a message while
+   a `prompt` call of this chat was on its way and the answer has not said whose it is (see "A run
+   that takes up a message while the chat sends may be the chat's own"), or it was first heard
+   from its own events while a message of this chat waited (see "A run is known from its start or
+   from its own events"), or it started while a message of this chat waited, or while its `prompt`
+   call was on its way, and has taken nothing up yet. This is a Stop right after a send in a single
+   pane, where OpenCode's stream is ahead of its answer or the answer ahead of the delivery.
+3. No run is known to be going on and a message of this chat may be starting one with nothing
+   heard of it yet: a message that waits, a `prompt` call still on its way, or one that ended
+   within the last 5 seconds without naming its inbox item. That interrupt reaches a session with
+   nothing running, so on its own it stops nothing: see "A Stop right after a send" below.
+
+**A Stop right after a send.** A message sent a moment ago may not have started its run yet, so the
+interrupt of the press finds nothing to stop, and the run would start after the Stop. Two rules
+close that:
+
+- *Not sent yet.* A send first wakes the server and posts a waiting model pick, and only then
+  makes its `prompt` call. A Stop pressed before that call keeps the message from being sent:
+  right before the call, under the chat's lock, the send checks whether a Stop was pressed since it
+  began, and if so it posts nothing and `chat_send` fails with "Not sent: Stop was pressed before
+  the message reached OpenCode." The page takes a failed send back (its count goes down by one, the
+  row is marked failed), so nothing is left waiting. Every Stop counts for this, also one that
+  leaves another pane's run alone. A message sent after the Stop goes out as usual.
+- *Sent, not started.* While a `prompt` call of this chat is on the wire, or a message of its own
+  that this Stop asked to take back still waits, the Stop is not over. It keeps looking, every
+  20 ms and for the stop grace at most: a message of this chat that shows up waiting is asked to
+  be cancelled (once), and a run that starts and is or may be this chat's own is interrupted, once
+  per run. `stopped` goes to the page only when that run has ended, so no reply follows a Stop. If
+  nothing is heard within the stop grace, the Stop gives up: `stopped {how: "interrupt"}` when no
+  run is known, `"ended"` with a cut turn when one of its own still runs.
+
+  The answer to the `DELETE` does not end the wait. Seen live on 2026-11-24, on the first send
+  after a launch (the `prompt` call took 330 ms, Stop was pressed 60 ms in): OpenCode answered the
+  `DELETE` of the waiting message with a 2xx, and one millisecond later started the run and
+  delivered that message to it. The Stop had ended on the 2xx, the page was told `stopped`, and the
+  reply streamed after it. So the Stop waits for OpenCode's own word on the stream:
+  `session.inbox.cancelled` (the message will not run), or the message's delivery (the run that
+  took it up is interrupted and waited for).
+
+  A chat closed while its Stop waits ends the Stop at once: it returns `"ended"`, and the page
+  hears nothing after the `exit`.
+
+With nothing on the wire and nothing left waiting there is nothing to wait for, and the Stop answers
+`stopped {how: "interrupt"}` as soon as OpenCode took the interrupt.
+
+On the page, a Stop pressed within 700 ms of a click on Send is ignored (the second click of a
+double-click must not stop the turn it just started). A message sent from the keyboard has no second
+click, so Stop counts at once after Enter. Before 2026-11-24 the guard counted from every send, so a
+Stop within 700 ms of Enter never reached the engine and the reply ran to its end.
+
+Any other run known to be going on is another pane's and is never interrupted from here, whatever
+this chat has in the session: nothing, a message waiting behind that run, or one still on its way
+(the run took up nothing during that send). The run goes on and stays mirrored, there is no wait
+and no cut turn, and the chat answers `stopped {how: "ended"}` at once. A chat opened in the middle
+of that run knows it from the run's own events. An OpenCode chat always answers `stopped` (and
+returns `"ended"` or `"interrupt"`, never `null`), so the page never waits. A close posts its
+interrupt in cases 1 and 2, and for a message of its own that waits while no run is known; a
+message still on its way with no run known is no reason for it.
+
+A Stop also takes back the chat's own messages still waiting, whoever's run is going on: each one is
+cancelled with `DELETE /api/session/{id}/inbox/{inboxID}` (after the interrupt, when one is posted).
+Another chat's waiting messages are not touched. A close does not take waiting messages back: they
+stay in OpenCode's inbox. A message gets its `cancelled` result only when OpenCode
+says so (`session.inbox.cancelled`). The Stop waits for that word, so the `cancelled` result comes
+before `stopped`; it comes after only when OpenCode says it later than the stop grace. If OpenCode
+does not cancel one (the call did not land, or nothing was said in time), the message stays waiting
+and gets its `result` from the run that takes it up, which OpenCode starts with the next message
+sent. One a run took up during the Stop gets its `result` from that run, which the Stop interrupts.
+
+**Sleep and exit.** The server is ended after `IDLE_SLEEP` (10 minutes) with no event and no busy
+chat, or after `BUSY_IDLE_SLEEP` (60 minutes) of silence while a turn looks busy; every open chat
+then gets `exit {reason: "sleep"}` and stays open, and the next send, model list or session list
+starts the server again. A server that ends by itself gives `exit {reason: "crashed"}` (or `"ended"`
+on a clean code). `chat_end` gives that chat `exit {reason: "closed"}` and leaves the server for the
+others. `chat_engine::close_all` ends the server on quit: each OpenCode chat gets `exit {reason:
+"closed"}` with no interrupt sent, a start under way is not waited for (its server is ended when it
+finishes), and the process is ended after every lock is let go. On Windows the server is put in a
+kill-on-close job of its own right after it starts, before it reads its settings, so it and the
+programs it starts (MCP servers, language servers) end with the job.
+
+**Not known / limits.**
+
+- Whether OpenCode can read a picture by path or as an attachment through this API: not tried.
+- The largest `limit` the message list accepts: not measured; the newest 200 are read.
+- If Kolux itself is killed, Windows closes the server's job and ends the server and what it
+  started. A program started in the moment between the server's start and its job (a few
+  microseconds; OpenCode starts nothing that early) would be outside it. On other systems the
+  server has no job and may stay until it is ended by hand.
+- `chat_session_delete` takes `cwd` for the page's sake and does not check the session belongs to that folder.
+
 ## Commands
 
 | Command | Arguments (as the page passes them) | Returns |
 |---|---|---|
-| `chat_start` | `chatId: string, cwd: string, model: string \| null, resumeSessionId: string \| null, extraEnv: [string, string][], agent: string \| null` (`"claude"` when left out) | nothing; error text on failure |
+| `chat_start` | `chatId: string, cwd: string, model: string \| null, effort: string \| null, resumeSessionId: string \| null, extraEnv: [string, string][], agent: string \| null` (`"claude"` when left out) | nothing; error text on failure |
 | `chat_send` | `chatId: string, text: string, images: { media_type: string, base64: string }[]` (`mediaType` also accepted) | nothing |
 | `chat_stop` | `chatId: string` | `"interrupt"`, `"ended"`, or `null` when no turn was running |
 | `chat_end` | `chatId: string` | nothing (closing an unknown chat does nothing) |
+| `chat_models` | none | `{ id, label, provider, efforts: string[] }[]`: the models OpenCode lists |
+| `chat_sessions` | `cwd: string` | `{ id, title, updatedAt }[]` (`updatedAt` in ms): OpenCode's saved sessions of that folder, newest first |
+| `chat_session_delete` | `cwd: string, session: string` | nothing; the session is deleted from OpenCode for good |
+| `chat_history` | `agent: string, cwd: string, session: string, limit: number \| null` | what a kept conversation already said; for `opencode` it is read from the server, for the others from the agent's transcript file |
+
+The page's side of the three OpenCode commands is `src/chat/opencode.ts` (`listChatModels`,
+`listChatSessions`, `deleteChatSession`).
 
 - `chat_start` on a chat id that is already open closes the old one first. It starts the process
   at once; `cwd` must be an existing folder.
+- Two `chat_start` calls for one chat id can be on their way at once (each runs on a thread of its
+  own, and opening an OpenCode chat on a server that is still starting takes seconds). Only the
+  latest becomes the chat. Every start takes a number for its chat id; the chat an older start
+  opened speaks through a sink that goes quiet the moment a later start begins, never takes the
+  id, and is closed (it stops listening, its process ends) with no `exit` on the page. A chat
+  that takes the id closes the one it replaced. The overtaken call still answers without an
+  error, so the page shows none. Before 2026-11-24 both chats listened to their sessions and the
+  earlier one could overwrite the later; the overtaken chat was never closed. An overtaken
+  OpenCode start leaves the empty session it made saved in OpenCode.
 - `chat_send` writes one user message. A chat with no process (asleep, crashed, or stopped by
   ending the process) starts again first, with `--resume <session id>` when one is known.
   A send while a turn runs is written straight away; the agent queues it.
@@ -155,7 +498,7 @@ outstanding: the queued message is answered first, never lost. Only the reader o
 now counts: a late line from a process that was already ended is ignored for the reading and the
 handoff.
 
-An agent that cannot take the note on its command line (OpenClaude, or Claude Code through a `.cmd`
+An agent that cannot take the note on its command line (Claude Code through a `.cmd`
 shim) gets it in its first message after a handoff instead: the note text goes first inside the JSON
 user line on stdin, then what the user wrote. Only that one message carries it. A plain Claude Code
 chat keeps the appended system prompt, which also covers its very first start.
@@ -233,6 +576,12 @@ the sign of a start without the user's setup.
 - **The exit code after an interrupt-free end by stdin closing.** Read as reported.
 
 ## Tests
+
+OpenCode: `opencode_tests.rs` feeds the translator hand-written events and checks the payloads, the
+server-sent-event framing, the model and session rows and the history rows, with no server. One
+ignored test (`live_a_chat_streams_a_reply_and_resumes`) runs a real turn, an effort change and a
+resume against the installed `opencode`; it spends a few cents and is run by hand:
+`cargo test --manifest-path src-tauri/Cargo.toml --lib opencode_tests::live -- --ignored --nocapture`.
 
 `cargo test chat_engine`. Parsing tests use hand-written fixtures (`fixtures/*.jsonl`) shaped on
 the documented types, never captured from a real config folder. Process tests run `stub.js` with

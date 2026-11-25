@@ -89,7 +89,7 @@ export function forgetAsks() {
   hearing = null;
 }
 
-/** The agents whose prompts the card knows the keys for. OpenClaude is left out: it has no hook route here, and its menu's
+/** The agents whose prompts the card knows the keys for. Any other agent is left out: it has no hook route here, and its menu's
  * keys are not confirmed (the card would type guessed keys into it). */
 export const CARD_AGENTS = ["claude", "codex"] as const;
 

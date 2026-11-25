@@ -1,5 +1,5 @@
 // Chat panes, slice 1 (docs/research/chat-pane-plan-2026-11-20.md): one pane can be a chat instead of a
-// terminal. The pane runs one hidden agent process (`claude`, or `openclaude` for the other models,
+// terminal. The pane runs one hidden agent process (an OpenCode session for every model the chat page offers, or `claude`,
 // 2026-11-20) through the chat engine, hears every `chat-event`,
 // folds it into the rows the chat view already knows (`combine` and `fold`) and draws them with `ViewRow`.
 // The box is the same Composer the transcript chat uses, so drafts, attachments, history and the model
@@ -9,28 +9,37 @@
 // Deliberately not here (the plan's later slices): the pane dot and sidebar row do not move yet because a
 // headless process gets no hook events (3), a refusal is a read-only notice rather than an Allow / Deny
 // card (4), and nothing under the reply reads the artifacts folder (5).
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import AgentMark from "../../marks/AgentMark";
 import { productName } from "../../marks/registry";
-import { Close } from "../../chrome/icons";
+import { Close, Plus } from "../../chrome/icons";
 import { withChord } from "../../terminal/PaneMenu";
 import { labelOf } from "../../keys/keymap";
 import { useKeymap } from "../../keys/KeymapContext";
-import { chatHistory, chatIdOf, endChat, hearChat, sendChat, startChat, stopChat } from "./client";
+import { chatHistory, chatIdOf, endChat, hearChat, readKeptChat, sendChat, startChat, stopChat } from "./client";
+import { announceDeleted, claimSession, holderOf, onSessionDeleted, releaseSession, sameFolder } from "./sessionBus";
 import { reduce, sessionChange, staleExit, stillWaiting } from "./events";
-import { applyRead, combine, livePending, prunePending, type ChatItem, type Pending } from "../model";
+import { applyRead, combine, dropCancelled, holdPending, livePending, prunePending, type ChatItem, type Pending } from "../model";
 import { fold, thoughtIds as idsOf, toggled } from "../steps";
-import { Composer } from "../MessageBox";
+import { Composer, type ComposerHandle } from "../MessageBox";
 import { BrowserChoice, LinkContext, type LinkHost } from "../ChatText";
 import { printedPaths } from "../chatLinks";
 import { nearBottom } from "../composer";
 import { loadLabel, visibleRows } from "../page";
 import { STOPPING_NOTE } from "../stop";
 import { NOTE_MS, selfClearing, sessionTitle, useDismiss } from "../ux";
-import { loadSaved, readModel, type Choice } from "../controls";
-import { DEFAULT_MODEL, OPENCLAUDE_DEFAULT } from "../../launch/seats";
+import { loadSaved, saveChoice } from "../controls";
 import { ViewRow, type ChatOpen } from "../ChatView";
+import { CHAT_AGENT, DEFAULT_CHAT_MODEL, listChatModels, noteServer, onModelsStale, type ChatModel } from "../opencode";
+import { HistoryColumn } from "../webui/HistoryColumn";
+import { ModelPopover } from "../webui/ModelPopover";
+import { EffortPicker } from "../webui/EffortPicker";
+import { Suggestions, Welcome } from "../webui/WelcomeView";
+import { columnMode, loadCollapsed, saveCollapsed } from "../webui/history";
+import { effortsOf, nameOfId, providerFromId, usableModel } from "../webui/models";
+import { useWidth } from "../webui/useWidth";
+import { useStable } from "../webui/useStable";
 import { ArtifactsStrip } from "./Strip";
 import { changed, mimeOf, newest, POLL_MS, PREVIEW_CAP, readArtifact, scanArtifacts, stampOf, stripIndex, THUMB_CAP, toBlobUrl, type ArtifactRow, type ArtifactScan } from "./artifacts";
 import "../chat.css";
@@ -39,11 +48,20 @@ import "../chat.css";
  *  which a chat pane does not have, so this one says only what happened. */
 const CANNOT_STOP_NOTE = "Could not stop the agent from here.";
 
-/** The pane's own words while its process is being started or has just failed. */
-const startingNote = (name: string) => `Starting ${name}…`;
+/** A model or effort switch the engine refused: the chat stays on what it had, and says so. */
+export const switchFailed = (to: string, stay: string) => `Could not switch to ${to}. Staying on ${stay}.`;
+/** An older Claude chat opened here (2026-11-24): its words show, and a new chat starts under them. */
+export const UNREACHABLE_NOTE = "Could not reach OpenCode to open this chat. It is still saved.";
+export const LEGACY_NOTE = "This older Claude chat can't be reopened here. A new chat starts below.";
+/** What a pane says when the chat it showed was deleted from another pane. */
+export const DELETED_NOTE = "That chat was deleted in another pane. A new chat started.";
+/** What a pane says when the chat it is asked to open is already open in another pane. */
+export const HELD_NOTE = "That chat is already open in another pane.";
+
+/** The pane's own words when its process has just failed (the empty chat's own "Starting…" is drawn by Welcome). */
 const crashedNote = (name: string) => `${name}'s process ended. Your next message starts it again.`;
 
-export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, effort = null, agent = "claude", resume = null, onSession, onModel, onEffort, open: opener }: {
+export default function ChatPane({ pane, hidden = false, focused = false, onFocus, onClose, named = false, onName, model = null, effort = null, resume = null, legacyId = null, onReveal, onSession, onModel, onEffort, open: opener }: {
   pane: { key: number; cwd: string | null; title?: string };
   /** True while the grid hides this pane: it reads nothing new either way, the event stream pushes. */
   hidden?: boolean;
@@ -53,35 +71,44 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   /** The pane already has a name the user gave it, so the first message must not replace it. */
   named?: boolean;
   /** Names the session after its first message, as a chat app does, once per pane. */
-  onName?: (name: string) => void;
-  /** The model this chat starts on; null takes the last pick or OpenClaude's own cheap default. */
+  onName?: (name: string | null) => void;
+  /** The model this chat starts on; null takes the last pick or the chat's cheap default. */
   model?: string | null;
   /** The effort level this chat starts on; null takes the last pick. */
   effort?: string | null;
-  /** The AI that answers here (2026-11-20): `claude`, or `openclaude` for the other models. */
+  /** Kept so callers still compile. Every chat now runs through OpenCode (CHAT_AGENT), whatever is passed (2026-11-24). */
   agent?: string;
   /** The conversation to pick up (2026-11-21): a kept Everyday chat's own id, so reopening resumes it. */
   resume?: string | null;
   /** The agent's conversation id, once it names one: the window writes it on the chat's kept record. */
   /** The agent conversation the chat is on now; `null` once a handoff ended it. */
-  onSession?: (id: string | null) => void;
+  onSession?: (id: string | null, legacy?: string | null) => void;
+  /** The older Claude conversation this chat continues (2026-11-24): its read-only transcript shows above the chat. */
+  legacyId?: string | null;
+  /** Brings this pane into view (its tab, its folder) when another pane is asked to open the chat this one holds. */
+  onReveal?: () => void;
   /** A model picked in the box (2026-11-21): the window writes it on the chat's kept record, so reopening
    *  resumes on the model the chat last used. */
   onModel?: (model: string | null) => void;
   /** An effort picked in the box, written on the record the same way. */
-  onEffort?: (effort: string) => void;
+  onEffort?: (effort: string | null) => void;
   /** The window's way of opening a link or a printed file, as a terminal pane gets it. */
   open?: ChatOpen;
 }) {
   const keymap = useKeymap();
   const chatId = chatIdOf(pane.key);
-  /** The AI's name for the pane's own words: "Claude Code", "OpenClaude", or the id as itself. */
+  /** Every chat runs through OpenCode (2026-11-24); the models behind it are picked at the top of the chat. */
+  const agent = CHAT_AGENT;
+  /** The AI's name for the pane's own words: "OpenCode", or the id as itself. */
   const name = productName(agent) ?? agent;
   const [items, setItems] = useState<ChatItem[]>([]);
   // CHAT-02: what this pane sent and no echo has confirmed yet, never capped (capPending stays for
   // the transcript chat's own sends).
   const [sent, setSent] = useState<Pending[]>([]);
   const [open, setOpen] = useState(false);
+  /** The engine lost OpenCode's event stream (a `connection_lost` result): the turn is closed here, but OpenCode may still be
+   *  running it, so Stop stays. The next init, result, reply, stop or exit ends the doubt. */
+  const [lost, setLost] = useState(false);
   /** Messages this pane sent that have no result yet (review 2026-11-23): a message queued behind a running
    *  turn gets a result of its own, so the working line and Stop stay until the count is back to 0. */
   const waiting = useRef(0);
@@ -102,6 +129,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // ref instead of closing over a callback that may have been replaced.
   const reportSession = useRef(onSession);
   reportSession.current = onSession;
+  // `named` is the pane record's own flag (`titleByUser`): the user chose the name, by hand. It is read live, so a
+  // rename made at any moment, even before the history column's first report, is never written over. A title the
+  // pane gave itself (the first message, or the column's) does not set it, and a restored pane that holds such a
+  // title keeps following the column.
+  const byUser = useRef(named);
+  byUser.current = named;
   // A chat is started once per pane. React's strict mode mounts an effect twice in development; the
   // second mount must not start a second process, or the conversation the first one began is thrown away.
   const started = useRef(false);
@@ -110,14 +143,63 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // The model and effort this conversation runs at (2026-11-21). A pick in the box restarts the hidden
   // process with `--resume`, so the conversation carries on under the new choice; the window writes both
   // on the chat's kept record, so reopening comes back on the same pair. With nothing picked yet, the
-  // last choice wins, and an OpenClaude chat with no history starts on its own cheap default.
+  // last choice wins, and an OpenCode chat with no history starts on the cheap default.
   const savedChoice = useMemo(() => loadSaved()[agent], [agent]);
-  const choice = useRef({
-    model: model ?? savedChoice?.model ?? (agent === "openclaude" ? OPENCLAUDE_DEFAULT : null),
+  const choice = useRef<{ model: string; effort: string | null }>({
+    // An older chat may hold a Claude-era name like "opus"; only an OpenCode id (route/maker/model) is used.
+    model: usableModel(model) ?? usableModel(savedChoice?.model) ?? DEFAULT_CHAT_MODEL,
     effort: effort ?? savedChoice?.effort ?? null,
   });
   const sessionId = useRef<string | null>(resume);
+  /** The chat open now, for the history column's highlight (the ref above is what the listener reads). */
+  const [activeSession, setActiveSession] = useState<string | null>(resume);
   const [liveModel, setLiveModel] = useState(choice.current.model);
+  const [liveEffort, setLiveEffort] = useState(choice.current.effort);
+  // The Open WebUI screen (2026-11-24): the model list for the top picker, the history column and its width.
+  const [models, setModels] = useState<ChatModel[]>([]);
+  const [collapsed, setCollapsed] = useState(() => loadCollapsed());
+  const [screen, width] = useWidth<HTMLDivElement>();
+  const mode = columnMode(width, collapsed);
+  const [historyTick, setHistoryTick] = useState(0);
+  const composer = useRef<ComposerHandle>(null);
+  useEffect(() => {
+    let live = true;
+    // One request is shared by every pane (opencode.ts), and the list is asked for again when the engine's
+    // server restarted: the list a pane drew before then may name models the new server no longer has.
+    const ask = () => void listChatModels().then((list) => live && list.length > 0 && setModels(list), () => {});
+    ask();
+    const off = onModelsStale(ask);
+    return () => {
+      live = false;
+      off();
+    };
+  }, []);
+  /** An older Everyday chat that cannot be continued here (2026-11-24): its transcript is shown, a new chat runs below,
+   *  and the kept row keeps its old id, so nothing about it is lost or silently replaced. */
+  const [legacy, setLegacy] = useState(false);
+  const legacyRef = useRef(false);
+  /** The older Claude conversation this chat continues. It is written next to the new OpenCode id on the first
+   *  send (review 2 P2-4), in a field of its own, so the read-only transcript still shows above after a restart. */
+  const legacyOld = useRef<string | null>(legacyId);
+  const markLegacy = (on: boolean) => {
+    legacyRef.current = on;
+    setLegacy(on);
+  };
+  const setSession = (id: string | null) => {
+    sessionId.current = id;
+    setActiveSession(id);
+    setHistoryTick((n) => n + 1);
+  };
+  // The newest focus action, for another pane that is asked to open the chat this pane holds.
+  // It reveals the pane (its folder and tab too), not only marks it focused: the pane may be out of sight.
+  const focusPane = useRef(onReveal ?? onFocus);
+  focusPane.current = onReveal ?? onFocus;
+  // This pane holds the saved chat it shows, so no other pane opens it as well; the others are sent here instead.
+  useEffect(() => {
+    if (!activeSession) return;
+    claimSession(activeSession, pane.key, () => focusPane.current());
+    return () => releaseSession(activeSession, pane.key);
+  }, [activeSession, pane.key]);
   const ending = useRef<ReturnType<typeof setTimeout> | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const stick = useRef(true);
@@ -151,7 +233,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
       try {
         const off = await hearChat(chatId, (ev) => {
           if (!live) return;
-          if (ev.kind === "started" && ev.pid !== undefined) lastPid.current = ev.pid;
+          if (ev.kind === "started" && ev.pid !== undefined) {
+            lastPid.current = ev.pid;
+            // A new server process means the model list may have changed: this asks every pane to read it again.
+            noteServer(ev.pid);
+          }
           // A late exit of a process already replaced says nothing about the one running now.
           if (staleExit(ev, lastPid.current)) return;
           seq.current += 1;
@@ -161,6 +247,12 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // stay while a message queued behind it still runs.
           waiting.current = stillWaiting(waiting.current, ev);
           if (ev.kind === "result" || ev.kind === "stopped") setOpen(waiting.current > 0);
+          // A stop leaves the sends it passed over waiting (no "Responding"); each cancelled result then takes the
+          // oldest one away, and an echo (a later send ran it) clears it through `prunePending`.
+          if (ev.kind === "stopped") setSent(holdPending);
+          if (ev.kind === "result" && ev.subtype === "cancelled") setSent(dropCancelled);
+          if (ev.kind === "result") setLost(ev.subtype === "connection_lost");
+          else if (ev.kind === "init" || ev.kind === "assistant" || ev.kind === "stopped" || ev.kind === "exit") setLost(false);
           // A reply while nothing was waiting is a turn the page did not count: it runs until its result.
           if (ev.kind === "assistant" && waiting.current > 0) setOpen(true);
           // A kept Everyday chat learns the agent's own conversation id here: the init line names it, and a
@@ -169,11 +261,18 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // a model or effort pick, or opening the chat again, starts fresh instead of resuming the full one.
           const session = sessionChange(ev);
           if (session !== undefined) {
-            sessionId.current = session;
-            reportSession.current?.(session);
+            setSession(session);
+            // An older Claude chat keeps the id on its kept row until something is sent in the new chat below
+            // it (see `send`): an empty chat the user never typed in must not replace the old one.
+            if (session === null) legacyOld.current = null;
+            if (!legacyRef.current) reportSession.current?.(session, legacyOld.current);
           }
-          // A finished turn is when most artifacts appear, so the folder is read again right then.
-          if (ev.kind === "result") setLookAt((n) => n + 1);
+          // A finished turn is when most artifacts appear, so the folder is read again right then, and the
+          // history column's list has a new or retitled chat.
+          if (ev.kind === "result") {
+            setLookAt((n) => n + 1);
+            setHistoryTick((n) => n + 1);
+          }
           if (ev.kind === "exit") {
             setOpen(waiting.current > 0);
             if (ev.reason === "crashed") setNote(crashedNote(productName(agent) ?? agent));
@@ -186,9 +285,13 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
           // A kept chat opened again (2026-11-21): the agent's own transcript holds what was said, and a
           // resumed process does not say it again. A session whose file is gone is not resumed at all: the
           // agent would only answer "no conversation found", so the chat starts fresh and says so quietly.
+          // An older Claude chat (kept before every chat ran through OpenCode) is different: its own transcript
+          // is shown and a notice says it cannot be continued, so it never turns into a blank chat unannounced.
           let pick = sessionId.current;
           if (pick && pick === resume) {
-            const history = await chatHistory(agent, cwd, pick).catch(() => null);
+            const { read: history, legacy: old, unreachable } = await readKeptChat(cwd, pick);
+            // A chat that continues an older Claude one shows that transcript above its own (read-only).
+            const before = !old && legacyOld.current ? await chatHistory("claude", cwd, legacyOld.current).catch(() => null) : null;
             if (!live) {
               // The effect was re-run or closed while the history loaded. A re-run saw `started` and
               // skipped, so give the start back and ask for another run, or the chat has no process.
@@ -196,11 +299,29 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
               setAgain((n) => n + 1);
               return;
             }
-            if (history) setItems(applyRead([], history));
-            else {
+            if (unreachable) {
+              // OpenCode could not be reached, which says nothing about the chat: its id stays on the record, the
+              // pane says so, and Try again reads it once more. It is never replaced with a blank chat (P3-11).
+              started.current = false;
+              setError(UNREACHABLE_NOTE);
+              return;
+            }
+            if (old) {
+              markLegacy(true);
+              legacyOld.current = pick;
+              if (history) setItems(applyRead([], history));
+              setSession(null);
+              pick = null;
+            } else if (history) {
+              setItems([...(before ? applyRead([], before) : []), ...applyRead([], history)]);
+              // A chat that already has words in it is named by the column, not by the next message sent.
+              if (history.items.length > 0) namedOnce.current = true;
+            } else {
               // The saved conversation is gone: forget its id here too, so a later model or effort pick
-              // cannot restart the process with `--resume <gone-id>`.
-              sessionId.current = null;
+              // cannot restart the process with `--resume <gone-id>`. The older Claude transcript this chat
+              // continued stays above the fresh start (round 3 P3), and its id stays for the next session.
+              if (before) setItems(applyRead([], before));
+              setSession(null);
               pick = null;
             }
           }
@@ -236,8 +357,8 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     return () => clearTimeout(t);
   }, [note]);
   useEffect(() => {
-    if (!open) setNote((n) => (n === STOPPING_NOTE ? null : n));
-  }, [open]);
+    if (!open && !lost) setNote((n) => (n === STOPPING_NOTE ? null : n));
+  }, [open, lost]);
   // A new chat is a new conversation with its own scroll and drafts.
   useEffect(() => {
     setItems([]);
@@ -246,6 +367,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     waiting.current = 0;
     lastPid.current = null;
     setOpen(false);
+    setLost(false);
     setAway(false);
   }, [chatId]);
 
@@ -329,8 +451,11 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const thoughtIds = idsOf(items);
   const toggle = (id: string) => setThoughts((t) => toggled(t, id));
   // CHAT-024: the model the agent reported last, named beside the box. Claude reports the change it made
-  // from `/model`; OpenClaude's pick restarts the process, so the choice this pane keeps is the truth.
-  const shownModel = useMemo(() => (agent === "claude" ? readModel(agent, items) : null) ?? liveModel, [agent, items, liveModel]);
+  // OpenCode's pick restarts the process, so the choice this pane keeps is the truth.
+  const shownModel = liveModel;
+  const modelName = models.find((m) => m.id === liveModel)?.label ?? nameOfId(liveModel);
+  const efforts = effortsOf(models, liveModel);
+  const empty = rows.length === 0 && !error;
 
   // CHAT-025: a link in a reply opens as it does in a terminal pane. Files are only openable when the
   // agent printed them recently (chatLinks.ts); with no in-app viewer every web link asks first.
@@ -397,13 +522,15 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   // so it is ended and started again with `--resume` on the conversation's own id. The rows stay on
   // screen; only the process behind them changes. The box disables these picks while a turn runs, so
   // nothing is cut off mid-answer.
-  const applyChoice = (pick: Choice) => {
+  const applyChoice = (pick: { model?: string; effort?: string | null }) => {
+    const before = choice.current;
     const next = {
-      model: pick.model === undefined ? choice.current.model : pick.model === DEFAULT_MODEL ? null : pick.model,
+      model: pick.model === undefined ? choice.current.model : pick.model,
       effort: pick.effort === undefined ? choice.current.effort : pick.effort,
     };
     choice.current = next;
     setLiveModel(next.model);
+    setLiveEffort(next.effort);
     if (pick.model !== undefined) onModel?.(next.model);
     if (pick.effort !== undefined) onEffort?.(pick.effort);
     const cwd = pane.cwd;
@@ -415,7 +542,101 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         await startChat(chatId, cwd, next.model, agent, sessionId.current, next.effort);
         setSpawned(true);
       } catch (e) {
-        setError(String(e));
+        // The switch did not happen, so the chat is still on the model it was on: the picker, the saved
+        // choice and the kept record go back to it, and a line says so. The chat itself is not in an error state.
+        choice.current = before;
+        setLiveModel(before.model);
+        setLiveEffort(before.effort);
+        saveChoice(agent, { model: before.model, ...(before.effort ? { effort: before.effort } : {}) });
+        if (pick.model !== undefined) onModel?.(before.model);
+        // The effort goes back too, in the pane and on the kept record, or a refused pick would reopen on it (P3-8).
+        if (pick.effort !== undefined || pick.model !== undefined) onEffort?.(before.effort);
+        setNote(`${switchFailed(pick.model !== undefined ? nameOfId(next.model) : "that effort", nameOfId(before.model))} ${String(e)}`);
+      }
+    })();
+  };
+
+  /** The top picker: the model changes for the next turn on the same conversation. An effort the new model
+   *  does not offer is dropped, so the box never shows a level the model cannot run at. */
+  const pickModel = (id: string) => {
+    const offered = effortsOf(models, id);
+    const keep = choice.current.effort && offered.includes(choice.current.effort) ? choice.current.effort : null;
+    saveChoice(agent, { model: id, ...(keep ? { effort: keep } : {}) });
+    applyChoice({ model: id, effort: keep });
+  };
+  const pickEffort = (level: string) => {
+    saveChoice(agent, { effort: level });
+    applyChoice({ effort: level });
+  };
+
+  /** Wipes what is on screen for another conversation: the rows, the sends still waiting and the scroll. */
+  const resetView = () => {
+    setItems([]);
+    setSent([]);
+    setPages(0);
+    setThoughts(new Set());
+    setNote(null);
+    setOpen(false);
+    setLost(false);
+    setAway(false);
+    waiting.current = 0;
+    stick.current = true;
+  };
+  const BUSY_NOTE = "Wait for the reply to finish, or press Stop, before switching chats.";
+
+  /** New chat: a fresh conversation in the same folder. */
+  const newChat = (force = false, say: string | null = null) => {
+    const cwd = pane.cwd;
+    if (!cwd) return;
+    if (!force && (open || waiting.current > 0)) return setNote(BUSY_NOTE);
+    // A chat nothing has been said in is already the blank chat New chat would make, so it is kept (the engine
+    // makes a saved chat the moment one starts, so a New chat on a blank one would only pile up empty rows).
+    if (!force && rows.length === 0 && !legacyRef.current) return composer.current?.focus();
+    resetView();
+    markLegacy(false);
+    if (say) setNote(say);
+    namedOnce.current = false;
+    // The old chat's own name leaves the tab and the sidebar row: this one has none yet (a name the user chose stays).
+    if (!byUser.current) onName?.(null);
+    setSession(null);
+    legacyOld.current = null;
+    reportSession.current?.(null);
+    void startChat(chatId, cwd, choice.current.model, agent, null, choice.current.effort).then(
+      () => (setSpawned(true), composer.current?.focus()),
+      (e) => setError(String(e)),
+    );
+  };
+
+  /** A past chat from the history column: its transcript is read back and the process resumes on it. */
+  const openSession = (id: string) => {
+    const cwd = pane.cwd;
+    if (!cwd || id === sessionId.current) return;
+    if (open || waiting.current > 0) return setNote(BUSY_NOTE);
+    // Another pane already holds this chat: that pane comes forward, and this one stays where it is, so two
+    // panes never type into one conversation.
+    const held = holderOf(id, pane.key);
+    if (held) {
+      held.focus();
+      setNote(HELD_NOTE);
+      return;
+    }
+    void (async () => {
+      try {
+        const history = await chatHistory(agent, cwd, id);
+        resetView();
+        markLegacy(false);
+        // A chat with words in it is named by the column (and by OpenCode's late title); one with nothing said in
+        // it is named by the first message sent, like a new chat. The old chat's automatic name goes either way.
+        namedOnce.current = history.items.length > 0;
+        if (!byUser.current) onName?.(null);
+        setItems(applyRead([], history));
+        setSession(id);
+        legacyOld.current = null;
+        reportSession.current?.(id, null);
+        await startChat(chatId, cwd, choice.current.model, agent, id, choice.current.effort);
+        setSpawned(true);
+      } catch (e) {
+        setNote(`Could not open that chat. ${String(e)}`);
       }
     })();
   };
@@ -425,8 +646,14 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
   const send = (text: string): boolean => {
     if (!namedOnce.current) {
       namedOnce.current = true;
-      const name = named ? null : sessionTitle(text);
+      const name = byUser.current ? null : sessionTitle(text);
       if (name) onName?.(name);
+    }
+    // The first message in a chat that continues an older Claude one makes the new OpenCode chat real: its id is
+    // written on the record now, with the old id beside it, so a restart opens both (review 2 P2-4).
+    if (legacyRef.current) {
+      markLegacy(false);
+      if (sessionId.current) reportSession.current?.(sessionId.current, legacyOld.current);
     }
     const id = `sent-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
     // A send typed while an earlier send has no result yet is queued behind that turn: its rows keep
@@ -457,6 +684,27 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
     );
   };
 
+  // --- What the history column gets (2026-11-24): callbacks that keep one identity, so the column and the model
+  // picker are not redrawn for every word the reply streams. `useStable` hands out one function that always
+  // runs the newest closure above.
+  const onNew = useStable(() => newChat());
+  const onOpen = useStable(openSession);
+  const onToggleColumn = useCallback(() => setCollapsed((c) => (saveCollapsed(!c), !c)), []);
+  const onPickModel = useStable(pickModel);
+  // The tab and the sidebar row carry the title the history column shows for this chat.
+  const onColumnTitle = useStable((t: string) => {
+    if (byUser.current) return;
+    onName?.(t);
+  });
+  // A chat deleted from any pane's list: the pane that shows it starts a new chat and says why.
+  const onDeleted = useStable((id: string) => announceDeleted({ cwd: pane.cwd ?? "", id, source: pane.key }));
+  const whenDeleted = useStable((d: { cwd: string; id: string; source: number | null }) => {
+    if (!sameFolder(d.cwd, pane.cwd ?? "") || d.id !== sessionId.current) return;
+    newChat(true, d.source === pane.key ? null : DELETED_NOTE);
+  });
+  useEffect(() => onSessionDeleted(whenDeleted), [whenDeleted]);
+  const startedChat = rows.length > 0;
+
   const title = pane.title || name;
   return (
     <LinkContext.Provider value={host}>
@@ -478,7 +726,34 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
         {/* `cover` is what the transcript chat uses when it takes the whole frame: .chat is only capped
             at 45% when it shares a screen with a terminal. `chat-surface` is the app-like page: the pane
             is the page, so there is no inner card, no bar and one centred reading column. */}
-        <div className="chat cover chat-surface" aria-label="Chat">
+        <div className="wui-screen" ref={screen}>
+        <HistoryColumn
+          cwd={pane.cwd}
+          mode={mode}
+          activeId={activeSession}
+          activeStarted={startedChat}
+          active={!hidden}
+          refreshKey={historyTick}
+          onNew={onNew}
+          onOpen={onOpen}
+          onDeleted={onDeleted}
+          onToggle={onToggleColumn}
+          onTitle={onColumnTitle}
+        />
+        <div className="chat cover chat-surface wui-chat" aria-label="Chat" data-empty={empty ? "true" : undefined}>
+          <div className="wui-bar">
+            {mode === "hidden" && (
+              <button type="button" className="wui-icon" aria-label="New chat" title="New chat" onClick={() => newChat()}>
+                <Plus size={16} />
+              </button>
+            )}
+            <ModelPopover models={models} value={liveModel} disabled={open} onPick={onPickModel} />
+          </div>
+          {legacy && (
+            <div className="chat-state" role="status">
+              {LEGACY_NOTE}
+            </div>
+          )}
           {error ? (
             <div className="chat-state chat-error" role="alert">
               {error}{" "}
@@ -488,26 +763,7 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             </div>
           ) : rows.length === 0 ? (
             <div className="chat-welcome">
-              <span className="chat-welcome-mark" aria-hidden="true">
-                <AgentMark id={agent} size={30} label={name} />
-              </span>
-              <h2 className="chat-welcome-title">{spawned ? "What should we work on?" : startingNote(name)}</h2>
-              {spawned && (
-                <>
-                  <p className="chat-welcome-line">Ask in plain words. {name} works in this folder and shows you what it changes.</p>
-                  <div className="chat-starters" role="group" aria-label="Things to try">
-                    <button type="button" onClick={() => send("Explain what this project does, in plain words.")}>
-                      Explain this project
-                    </button>
-                    <button type="button" onClick={() => send("Look through this project and find the most likely bug. Tell me what you find before changing anything.")}>
-                      Find a bug
-                    </button>
-                    <button type="button" onClick={() => send("Suggest one improvement to this project and explain why it matters.")}>
-                      Suggest an improvement
-                    </button>
-                  </div>
-                </>
-              )}
+              <Welcome label={modelName} provider={providerFromId(liveModel)} starting={!spawned} />
             </div>
           ) : null}
           {thoughtIds.length > 0 && (
@@ -542,23 +798,28 @@ export default function ChatPane({ pane, hidden = false, focused = false, onFocu
             </button>
           )}
           {menu && <BrowserChoice url={menu.url} at={menu.at} onPick={pickBrowser} onClose={() => setMenu(null)} />}
+          {/* The box keeps one place in the tree whether the chat is empty or not, so a draft and the files
+              attached survive the first send; only the page's CSS moves it from the middle to the bottom. */}
           <Composer
+            ref={composer}
             paneKey={pane.key}
             live={!error}
             note={note ?? undefined}
             onSend={send}
-            working={open}
+            working={open || lost}
             onStop={stop}
             agent={agent}
             cwd={pane.cwd}
             shownModel={shownModel}
-            onLiveChoice={agent === "openclaude" ? applyChoice : undefined}
+            tools={<EffortPicker efforts={efforts} value={liveEffort} disabled={open} onPick={pickEffort} />}
           />
+          {empty && spawned ? <Suggestions onFill={(text) => composer.current?.fill(text)} /> : null}
           {full && (
             <button type="button" className="chat-full" aria-label="Close image" onClick={closeFull}>
               <img src={full} alt="Attached" />
             </button>
           )}
+        </div>
         </div>
       </section>
     </LinkContext.Provider>

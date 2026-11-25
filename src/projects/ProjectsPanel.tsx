@@ -70,7 +70,7 @@ import { outsideCard } from "./outsideCard";
 import { isToggleClick } from "./selection";
 import { VOCAB } from "../terminal/status";
 import type { AgentPass } from "../launch/agents";
-import { OPENCLAUDE_DEFAULT } from "../launch/seats";
+import { CHAT_AGENT, DEFAULT_CHAT_MODEL } from "../chat/opencode";
 import { KeyText } from "../keys/KeymapContext";
 import { GLOSSARY } from "../glossary";
 import HelpMenu from "../onboarding/HelpMenu";
@@ -91,7 +91,7 @@ import { editorRows, savePayload, type StatusRow } from "./statusEditor";
 import { useMissingFolders } from "./missingFolders";
 import { folderMissingNote } from "./folderWorkspace";
 import { everydayItems, everydaySessions, everydayUnkept, isEveryday, samePlace } from "./everyday";
-import { EVERYDAY_CHATS_FIELD, dropEverydayChat, everydayChatName, everydayChatsOf, readEverydayChats, setEverydayName, type EverydayChat } from "./everydayChats";
+import { EVERYDAY_CHATS_FIELD, dropEverydayChat, everydayChatName, everydayChatsOf, readEverydayChats, setEverydayUserName, type EverydayChat } from "./everydayChats";
 import { FILE_MANAGER, loadTargets, openIn } from "../open/openIn";
 import { frontProjectRow } from "./frontRow";
 import { projectsInGroup } from "./groupMembers";
@@ -136,7 +136,7 @@ type Props = {
   onLaunch: (agent: AgentInfo, projectId: string | null) => void;
   /** Slice 1 of chat panes: "New chat" in the sidebar's New session menu, so a chat never needs a terminal first.
    *  `model` starts the chat page on that model; `agent` (2026-11-20) names the AI that answers there —
-   *  `claude`, or `openclaude` for the other models. Everyday's New session passes OpenClaude (2026-11-21). */
+   *  `opencode` (2026-11-24) for a chat that runs through OpenCode, or `claude`. Everyday's New session passes OpenCode. */
   onChat?: (projectId: string | null, inFolder?: boolean, model?: string | null, agent?: string) => void;
   /** Focus one pane by its key (the Everyday chats list). */
   onFocusPane?: (key: number) => void;
@@ -219,7 +219,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   const [everydayPath, setEverydayPath] = useState<string | null>(null);
   const [everydayOpen, setEverydayOpen] = useState(true);
   const [everydayBusy, setEverydayBusy] = useState(false);
-  // New session opens OpenClaude directly (2026-11-21): one press, no model to pick first. The model and
+  // New session opens a chat directly (2026-11-21): one press, no model to pick first. The model and
   // effort are changed inside the chat as often as the user likes.
   const [everydayChatFor, setEverydayChatFor] = useState<string | null>(null);
   // The kept chats' own menu (2026-11-21): Rename and Delete on a row whose tab may be gone.
@@ -1708,7 +1708,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
     if (!clean) return;
     onSetting(EVERYDAY_CHATS_FIELD, (prev: unknown) => {
       const list = everydayChatsOf(prev);
-      const after = setEverydayName(list, id, clean);
+      const after = setEverydayUserName(list, id, clean);
       return after === list ? undefined : after;
     });
     const pane = chatPaneOf(id);
@@ -1759,7 +1759,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
       setEverydayBusy(false);
     }
   };
-  // New session (2026-11-21): one press opens an OpenClaude chat in the Everyday folder, on OpenClaude's
+  // New session (2026-11-21): one press opens a chat in the Everyday folder, on the chat's
   // cheap default. Nothing asks for a model here; the chat's own box switches model and effort any time,
   // and its kept row comes back on the pair it last used.
   const startEverydayChat = async () => {
@@ -1773,7 +1773,7 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
   useEffect(() => {
     if (!everydayChatFor || !projects.some((p) => p.id === everydayChatFor)) return;
     setEverydayChatFor(null);
-    onChat?.(everydayChatFor, true, OPENCLAUDE_DEFAULT, "openclaude");
+    onChat?.(everydayChatFor, true, DEFAULT_CHAT_MODEL, CHAT_AGENT);
   }, [everydayChatFor, projects, onChat]);
   const pinned = pinnedSet(pins, everyEntry.map((x) => x.w));
   const isPinned = (w: Worktree) => pins.some((x) => pathKey(x) === pathKey(w.path));
@@ -2613,14 +2613,14 @@ export default function ProjectsPanel({ reveal = 0, openDirs, sessions = [], sta
                   </>
                 )}
               </div>
-              {/* New session (2026-11-21): one press, no menu. It opens an OpenClaude chat in this plain
+              {/* New session (2026-11-21): one press, no menu. It opens a chat in this plain
                   folder; the chat's own box switches model and effort from then on. */}
               <div className="sb-everyday-actions">
                 <button
                   type="button"
                   className="sb-everyday-new"
                   data-testid="everyday-new-session"
-                  title="New session: opens an OpenClaude chat in this folder"
+                  title="New session: opens a chat in this folder"
                   onClick={() => void startEverydayChat()}
                   disabled={everydayBusy || launching}
                 >

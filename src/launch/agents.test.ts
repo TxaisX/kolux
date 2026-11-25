@@ -3,7 +3,7 @@ import { allSwitchedOff, canLaunch, defaultAgentId, disabledAgents, FIRST_PASS, 
 import type { AgentInfo } from "./PlusMenu";
 
 const mk = (id: string, installed: boolean): AgentInfo => ({ id, name: id, program: id, args: [], installed, path: installed ? `C:\\bin\\${id}.exe` : null });
-const list = [mk("claude", true), mk("openclaude", false), mk("codex", true), mk("gemini", false), mk("grok", true)];
+const list = [mk("claude", true), mk("opencode", false), mk("codex", true), mk("gemini", false), mk("grok", true)];
 
 test("the menu lists only installed agents, the default first, the rest in catalogue order", () => {
   expect(menuAgents(list, "claude").map((a) => a.id)).toEqual(["claude", "codex", "grok"]);

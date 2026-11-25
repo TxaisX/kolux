@@ -110,7 +110,7 @@ export async function scenario(id, opts, body) {
     const defaultArgs = `--model haiku --permission-mode manual${opts.noSettingsFlag ? "" : " --settings ${SETTINGS}"}`;
     ctx = await startProve(id, { report: rep, files: { "README.md": "scratch repo for a live proof\n" }, claudeArgs: defaultArgs, ...opts });
     if (!opts.noOpen) {
-      await ctx.openClaude();
+      await ctx.openClaudeCodeSession();
       if (opts.ready !== false) log(`claude ready: ${excerpt(await ctx.ready(), 3)}`);
     }
     await body(ctx, { log, check: chk.check, shot: (n) => shot(`${id}${n ? `-${n}` : ""}`), word: () => paneWord(ctx.app) });

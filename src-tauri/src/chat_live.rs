@@ -81,7 +81,7 @@ pub fn noted(id: u32, agent: Option<&'static str>, now: SystemTime) {
 /// session runs in: Claude's `projects/<folder>/*.jsonl`, Codex's day folders.
 fn any_in(agent: &str, home: &Path, since: SystemTime) -> Option<PathBuf> {
     match agent {
-        "claude" | "openclaude" => {
+        "claude" => {
             let folders = std::fs::read_dir(home.join("projects")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.is_dir());
             crate::chat::newest(folders.flat_map(|d| crate::chat::jsonl_in(&d).collect::<Vec<_>>()), since)
         }

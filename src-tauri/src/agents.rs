@@ -75,12 +75,11 @@ pub fn grok_home(env: Option<&str>, user: Option<&Path>) -> Option<PathBuf> {
     }
 }
 
-/// The 35 visible agents: the 34 of SESS-001 in its order, then OpenCode, which Txais brought back on
-/// 2026-10-28 (reverses SESS-043; appended so the SESS-001 numbering of the others does not move).
+/// The 34 visible agents: SESS-001's in its order (33 since OpenClaude was removed on 2026-11-24), then
+/// OpenCode, which Txais brought back on 2026-10-28 (reverses SESS-043; appended after the SESS-001 list).
 /// Claude Agent Teams (SESS-042) is skipped (DECISIONS.md).
-pub const CATALOGUE: [Entry; 35] = [
+pub const CATALOGUE: [Entry; 34] = [
     ("claude", "Claude Code", &["claude"], &["--permission-mode", "auto"]),
-    ("openclaude", "OpenClaude", &["openclaude"], &[]),
     ("codex", "Codex", &["codex"], CODEX_YOLO),
     ("autohand", "Autohand Code", &["autohand"], &[]),
     ("ante", "Ante", &["ante"], &[]),
@@ -430,7 +429,7 @@ enum Route {
 
 fn route(id: &str) -> Route {
     match id {
-        "claude" | "openclaude" | "codex" | "pi" | "omp" | "command-code" | "cursor" | "droid" => Route::Trailing,
+        "claude" | "codex" | "pi" | "omp" | "command-code" | "cursor" | "droid" => Route::Trailing,
         "trae" | "prime-agent" | "grok" => Route::DashDash,
         // OpenCode's terminal UI takes the opening prompt behind `--prompt` (opencode.ai/docs/cli, 2026-10-28).
         "mimo-code" | "opencode" => Route::Flag("--prompt"),
@@ -1132,7 +1131,6 @@ pub fn install_page(agent: &str) -> Option<&'static str> {
         "claude" => Some("https://code.claude.com/docs/en/setup"),
         "codex" => Some("https://developers.openai.com/codex/cli"),
         "grok" => Some("https://x.ai/cli"),
-        "openclaude" => Some("https://github.com/Twigpine/openclaude"),
         "autohand" => Some("https://docs.autohand.ai/guides/cli-quick-start"),
         "ante" => Some("https://docs.antigma.ai/"),
         "mimo-code" => Some("https://mimo.xiaomi.com/mimocode/install"),
@@ -1920,7 +1918,7 @@ X=1" } } });
     #[test]
     fn sess030_agents_without_a_documented_resume_form_come_back_at_their_prompt() {
         let none = serde_json::json!({});
-        for id in ["crush", "cline", "aug", "trae", "openclaude", "autohand", "ante", "mimo-code", "omp", "prime-agent", "kilo", "codebuff", "command-code", "continue", "rovo"] {
+        for id in ["crush", "cline", "aug", "trae", "autohand", "ante", "mimo-code", "omp", "prime-agent", "kilo", "codebuff", "command-code", "continue", "rovo"] {
             assert!(resume_args(id, Some("sid")).is_empty(), "{id}: no resume form wired");
             let plain = start_line(&none, id, &[], "", true).unwrap().args;
             assert_eq!(start_line_as(&none, id, &[], "", true, Start::Restore(Some("sid"))).unwrap().args, plain, "{id}: restored at its prompt");
@@ -1931,14 +1929,14 @@ X=1" } } });
     }
 
     #[test]
-    fn the_catalogue_has_the_34_agents_in_sess_001_order_with_their_start_lines_then_opencode() {
+    fn the_catalogue_has_the_33_agents_in_sess_001_order_with_their_start_lines_then_opencode() {
         let list = catalogue();
-        assert_eq!(list.len(), 35);
+        assert_eq!(list.len(), 34);
         let ids: Vec<&str> = list.iter().map(|a| a.id.as_str()).collect();
-        assert_eq!(&ids[..3], &["claude", "openclaude", "codex"]);
-        assert_eq!(ids[33], "devin");
-        assert_eq!(ids[34], "opencode", "T-572: OpenCode is back, appended after the SESS-001 list");
-        assert_eq!(ids.iter().collect::<std::collections::HashSet<_>>().len(), 35, "every id once");
+        assert_eq!(&ids[..2], &["claude", "codex"]);
+        assert_eq!(ids[32], "devin");
+        assert_eq!(ids[33], "opencode", "T-572: OpenCode is back, appended after the SESS-001 list");
+        assert_eq!(ids.iter().collect::<std::collections::HashSet<_>>().len(), 34, "every id once");
         let by = |id: &str| list.iter().find(|a| a.id == id).unwrap();
         assert_eq!(by("claude").args, vec!["--permission-mode", "auto"]);
         assert_eq!(by("codex").args, vec!["--sandbox", "workspace-write", "--ask-for-approval", "never"]);

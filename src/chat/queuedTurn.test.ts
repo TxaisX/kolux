@@ -3,7 +3,7 @@
 // streams, and the turn must keep its own worked time instead of settling early under the queued send.
 // Round 2: a send after a finished turn is not queued, so its own reply goes below it, never above.
 import { describe, expect, it } from "vitest";
-import { combine, type ChatItem, type Pending } from "./model";
+import { combine, dropCancelled, holdPending, type ChatItem, type Pending } from "./model";
 import { fold } from "./steps";
 
 const msg = (id: string, role: ChatItem["role"], text: string, at: number): ChatItem => ({ id, role, kind: "text", text, at });
@@ -43,5 +43,28 @@ describe("CHAT-02 review round 2: a send after a finished turn sits above its ow
     const items = [msg("u1", "user", "first", 0), msg("a1", "assistant", "done one", 2_000), msg("a2", "assistant", "done two", 13_000)];
     const rows = combine(items, [], null, [{ id: "p1", text: "second", at: 10_000 }]);
     expect(tags(rows)).toEqual(["message:u1", "message:a1", "pending:p1", "message:a2"]);
+  });
+});
+
+describe("Bug F: sends a Stop passed over", () => {
+  it("holdPending marks unconfirmed sends and keeps the same array when there is nothing to mark", () => {
+    const a: Pending = { id: "p1", text: "x", at: 1 };
+    const held = holdPending([a]);
+    expect(held[0].held).toBe(true);
+    expect(holdPending(held)).toBe(held);
+    expect(holdPending([])).toEqual([]);
+  });
+  it("dropCancelled takes the oldest unconfirmed send, and nothing when there is none", () => {
+    const a: Pending = { id: "p1", text: "x", at: 1 };
+    const b: Pending = { id: "p2", text: "y", at: 2 };
+    expect(dropCancelled([a, b])).toEqual([b]);
+    const none: Pending[] = [];
+    expect(dropCancelled(none)).toBe(none);
+  });
+  it("a held send at the tail gives no responding row", () => {
+    const p: Pending = { id: "p1", text: "second", at: 2_500, queued: true, held: true };
+    const v = fold(combine([], [], null, [p]), false);
+    expect(v.some((x) => x.row === "responding")).toBe(false);
+    expect(v.some((x) => x.row === "pending")).toBe(true);
   });
 });

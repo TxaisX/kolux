@@ -37,7 +37,7 @@ pub fn confined(root: &Path, path: &Path) -> Result<PathBuf, String> {
 /// The folders an agent's sessions live in.
 fn session_dirs(roots: &Roots, agent: &str) -> Vec<PathBuf> {
     match agent {
-        "claude" | "openclaude" => super::list::project_dirs(roots, agent),
+        "claude" => super::list::project_dirs(roots),
         "codex" => roots.codex.iter().flat_map(|h| [h.join("sessions"), h.join("archived_sessions")]).collect(),
         _ => Vec::new(),
     }

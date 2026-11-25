@@ -60,15 +60,15 @@ function guardFailures(app: string): string[] {
 }
 
 test("FIX-3: the real catalogue ids take the mark of the program their Command names", () => {
-  // OpenClaude, Gemini and the rest never have a custom id: the Command field is the only route.
-  expect(markFor("openclaude", "C:\\tools\\claude.exe")).toBe("claude");
-  expect(markFor("openclaude", "claude")).toBe("claude");
-  expect(markFor("openclaude", "C:\\Users\\me\\AppData\\Roaming\\npm\\Claude.CMD")).toBe("claude");
+  // Gemini and the rest never have a custom id: the Command field is the only route.
+  expect(markFor("othertool", "C:\\tools\\claude.exe")).toBe("claude");
+  expect(markFor("othertool", "claude")).toBe("claude");
+  expect(markFor("othertool", "C:\\Users\\me\\AppData\\Roaming\\npm\\Claude.CMD")).toBe("claude");
   expect(markFor("gemini", "/usr/local/bin/codex")).toBe("codex");
   expect(markFor("aider", "codex.exe")).toBe("codex");
   expect(markFor("gemini", "C:\\tools\\codex-nightly.exe")).toBe("codex");
   // Their own programs stay the plain shell glyph, and so does a Command that is not Claude or Codex.
-  expect(markFor("openclaude", "openclaude")).toBe("shell");
+  expect(markFor("othertool", "othertool")).toBe("shell");
   expect(markFor("gemini", "gemini")).toBe("shell");
   expect(markFor("gemini", "pwsh")).toBe("shell");
   expect(markFor("gemini", null)).toBe("shell");
@@ -79,25 +79,25 @@ test("FIX-3: the real catalogue ids take the mark of the program their Command n
   // T-335-b: Copilot and Cursor carry their own marks without driving the Claude-only pane logic.
   expect(markFor("copilot", "pwsh")).toBe("copilot");
   expect(markFor("cursor", "pwsh")).toBe("cursor");
-  expect(markFor("openclaude", "pwsh")).toBe("shell");
+  expect(markFor("othertool", "pwsh")).toBe("shell");
   expect(markForViaMenu).toBe(markFor);
 });
 
 test("FIX-3: a program is read as a command line, the way Rust credits it", () => {
-  expect(markFor("openclaude", "claude --x")).toBe("claude");
-  expect(markFor("openclaude", "claude.exe --permission-mode auto")).toBe("claude");
-  expect(markFor("openclaude", "  codex   --sandbox x")).toBe("codex");
-  expect(markFor("openclaude", '"C:\\Program Files\\Claude\\claude.exe" --x')).toBe("claude");
-  expect(markFor("openclaude", '"claude"')).toBe("claude");
+  expect(markFor("othertool", "claude --x")).toBe("claude");
+  expect(markFor("othertool", "claude.exe --permission-mode auto")).toBe("claude");
+  expect(markFor("othertool", "  codex   --sandbox x")).toBe("codex");
+  expect(markFor("othertool", '"C:\\Program Files\\Claude\\claude.exe" --x')).toBe("claude");
+  expect(markFor("othertool", '"claude"')).toBe("claude");
   expect(markFor("gemini", "node C:\\Users\\me\\AppData\\Roaming\\npm\\node_modules\\@anthropic-ai\\claude-code\\cli.js")).toBe("claude");
   expect(markFor("gemini", "node /usr/lib/node_modules/@openai/codex/bin/codex.js")).toBe("codex");
   // FIX-4: a spawn program is read quoted first, then as a line (tools.rs credited_program), so the
   // one launchable form with a space, a bare path, is credited. With arguments after an unquoted
   // path the cut is ambiguous and stays uncredited, the same as in Rust.
-  expect(markFor("openclaude", "C:\\Program Files\\Claude\\claude.exe")).toBe("claude");
-  expect(markFor("openclaude", "C:\\Program Files\\nodejs\\codex.cmd")).toBe("codex");
-  expect(markFor("openclaude", "C:\\Program Files\\Claude\\claude.exe --x")).toBe("shell");
-  expect(markFor("openclaude", "C:\\Program Files\\Tools\\notclaude.exe")).toBe("shell");
+  expect(markFor("othertool", "C:\\Program Files\\Claude\\claude.exe")).toBe("claude");
+  expect(markFor("othertool", "C:\\Program Files\\nodejs\\codex.cmd")).toBe("codex");
+  expect(markFor("othertool", "C:\\Program Files\\Claude\\claude.exe --x")).toBe("shell");
+  expect(markFor("othertool", "C:\\Program Files\\Tools\\notclaude.exe")).toBe("shell");
   // Look-alikes and other agents stay shell.
   expect(markFor("gemini", "claude-helper")).toBe("shell");
   expect(markFor("gemini", "claude-teams")).toBe("shell");
@@ -110,14 +110,14 @@ test("FIX-3: a program is read as a command line, the way Rust credits it", () =
 });
 
 test("FIX-3: paneMark, the helper every pane-building site uses, follows the start line before the catalogue", () => {
-  const openclaude = { id: "openclaude", program: "openclaude" };
+  const other = { id: "othertool", program: "othertool" };
   // The start line carries the Command the user set; the catalogue program alone would lose it.
-  expect(paneMark(openclaude, { program: "C:\\tools\\claude.exe" })).toBe("claude");
-  expect(paneMark(openclaude, { program: "codex" })).toBe("codex");
-  expect(paneMark(openclaude, { program: "claude --x" })).toBe("claude");
+  expect(paneMark(other, { program: "C:\\tools\\claude.exe" })).toBe("claude");
+  expect(paneMark(other, { program: "codex" })).toBe("codex");
+  expect(paneMark(other, { program: "claude --x" })).toBe("claude");
   // No program on the line: the catalogue's own.
-  expect(paneMark(openclaude, { program: null })).toBe("shell");
-  expect(paneMark(openclaude, {})).toBe("shell");
+  expect(paneMark(other, { program: null })).toBe("shell");
+  expect(paneMark(other, {})).toBe("shell");
   expect(paneMark({ id: "claude", program: "claude" }, { program: null })).toBe("claude");
   expect(paneMark({ id: "codex", program: "codex" }, { program: "pwsh" })).toBe("codex");
   expect(paneMark({ id: "gemini", program: "gemini" }, { program: "pwsh" })).toBe("shell");
@@ -185,8 +185,8 @@ test("FIX-5: creditedProgram reads a line only when its first word is a bare nam
   expect(creditedProgram("/opt/Grok Tools/grok")).toBe("grok");
   expect(creditedProgram(String.raw`C:\Program Files\Claude\claude.exe`)).toBe("claude");
   // A Command like this must not draw another agent's mark: the folder name is not the program.
-  expect(markFor("openclaude", String.raw`C:\Users\Codex Fan\tools\x.exe`)).toBe("shell");
-  expect(markFor("openclaude", String.raw`codex --cd C:\work\claude`)).toBe("codex");
+  expect(markFor("othertool", String.raw`C:\Users\Codex Fan\tools\x.exe`)).toBe("shell");
+  expect(markFor("othertool", String.raw`codex --cd C:\work\claude`)).toBe("codex");
 });
 
 test("FIX-4: creditedAgent is exact outside ASCII the way Rust is: its whitespace set, ASCII-only lowercase", () => {
@@ -200,12 +200,12 @@ test("FIX-4: creditedAgent is exact outside ASCII the way Rust is: its whitespac
   // to_ascii_lowercase leaves the Kelvin sign alone; JS toLowerCase folds it to k.
   expect(creditedAgent("\u212Airo-cli")).toBeNull();
   expect(creditedAgent("KIRO-CLI")).toBe("kiro");
-  expect(markFor("openclaude", "\ufeffclaude")).toBe("shell");
+  expect(markFor("othertool", "\ufeffclaude")).toBe("shell");
 });
 
 test("FIX-3: the program-name table matches the catalogue in agents.rs, in order", () => {
   const body = rust.slice(rust.indexOf("pub const CATALOGUE"), rust.indexOf("/// The catalogue with each agent"));
   const rows = [...body.matchAll(/^\s*\("([a-z-]+)", "[^"]*", &\[([^\]]*)\]/gm)].map((m) => [m[1], [...m[2].matchAll(/"([^"]+)"/g)].map((n) => n[1])]);
-  expect(rows.length).toBe(35); // T-572: OpenCode is back in the catalogue
+  expect(rows.length).toBe(34); // T-572: OpenCode is back in the catalogue; 2026-11-24: one agent left it
   expect(CREDIT_NAMES.map(([id, names]) => [id, [...names]])).toEqual(rows);
 });

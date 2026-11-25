@@ -9,6 +9,7 @@ import {
   readEverydayChats,
   setEverydayChoice,
   setEverydayName,
+  setEverydayUserName,
   setEverydaySession,
   touchEverydayChat,
   type EverydayChat,
@@ -20,7 +21,7 @@ test("kept chats are read back newest first, and a broken record is dropped rath
   const list = readEverydayChats({
     everydayChats: [
       { id: "a", agent: "claude", cwd: "C:\\E", at: 10 },
-      { id: "b", agent: "openclaude", cwd: "C:\\E", model: "sun", session: "s-1", name: "Taxes", at: 30 },
+      { id: "b", agent: "opencode", cwd: "C:\\E", model: "sun", session: "s-1", name: "Taxes", at: 30 },
       { id: "a", agent: "claude", cwd: "C:\\E", at: 20 }, // one row per id: the first wins
       { id: "c", agent: "claude" }, // no folder
       { id: "", agent: "claude", cwd: "C:\\E" }, // no id
@@ -30,7 +31,7 @@ test("kept chats are read back newest first, and a broken record is dropped rath
     ],
   });
   expect(list.map((c) => c.id)).toEqual(["b", "a"]);
-  expect(list[0]).toMatchObject({ agent: "openclaude", model: "sun", session: "s-1", name: "Taxes" });
+  expect(list[0]).toMatchObject({ agent: "opencode", model: "sun", session: "s-1", name: "Taxes" });
   expect(list[1].at).toBe(10);
 });
 
@@ -49,7 +50,7 @@ test("a new record names its AI, folder and model, and never reuses an id", () =
   expect(a.name).toBeUndefined();
   expect(a.session).toBeUndefined();
   expect(a.id).not.toBe(b.id);
-  expect(newEverydayChat("openclaude", "C:\\E", "sun", 2).model).toBe("sun");
+  expect(newEverydayChat("opencode", "C:\\E", "sun", 2).model).toBe("sun");
 });
 
 test("put adds a chat first and replaces one in place; an unchanged list comes back as it was", () => {
@@ -60,6 +61,17 @@ test("put adds a chat first and replaces one in place; an unchanged list comes b
   expect(putEverydayChat(list, rec("b", { at: 10 })).map((c) => c.id)).toEqual(["a", "b"]);
   const same = putEverydayChat(list, { ...b });
   expect(same).toBe(list);
+});
+
+test("review 2 P2-4: a Claude chat continued on OpenCode keeps its old id in its own field, which reads back", () => {
+  const list = [rec("a", { session: "0b1c2d3e-old" })];
+  const next = setEverydaySession(list, "a", "ses_new", "0b1c2d3e-old");
+  expect(next[0]).toMatchObject({ session: "ses_new", legacy: "0b1c2d3e-old" });
+  expect(setEverydaySession(next, "a", "ses_new", "0b1c2d3e-old")).toBe(next);
+  expect(readEverydayChats({ [EVERYDAY_CHATS_FIELD]: JSON.parse(JSON.stringify(next)) })[0]).toMatchObject({ session: "ses_new", legacy: "0b1c2d3e-old" });
+  // Opening another chat on the row, or leaving the field out, clears or keeps it as asked.
+  expect(setEverydaySession(next, "a", "ses_other", null)[0].legacy).toBeUndefined();
+  expect(setEverydaySession(next, "a", "ses_other")[0].legacy).toBe("0b1c2d3e-old");
 });
 
 test("a session id and a name land on the one chat, and a no-op returns the same list", () => {
@@ -112,4 +124,29 @@ test("an unnamed chat reads as New chat until its first message names it", () =>
 
 test("the settings key is the one the window writes", () => {
   expect(EVERYDAY_CHATS_FIELD).toBe("everydayChats");
+});
+
+test("round 3 P2: a name the user chose is marked, reads back, and the chat's own names never replace it", () => {
+  const list = [rec("a", { name: "Auto" })];
+  const mine = setEverydayUserName(list, "a", "My taxes");
+  expect(mine[0]).toMatchObject({ name: "My taxes", nameByUser: true });
+  // the settings file round trip keeps the mark
+  expect(readEverydayChats({ everydayChats: JSON.parse(JSON.stringify(mine)) })[0].nameByUser).toBe(true);
+  // an automatic name over a user's name is ignored
+  expect(setEverydayName(mine, "a", "Something OpenCode said")).toBe(mine);
+  // clearing the user's name hands the row back to the chat
+  const cleared = setEverydayUserName(mine, "a", undefined);
+  expect(cleared[0].nameByUser).toBeUndefined();
+  expect(setEverydayName(cleared, "a", "Auto again")[0].name).toBe("Auto again");
+  // a user name with no text is not a name
+  expect(setEverydayUserName(list, "a", "  ")).toBe(list);
+});
+
+test("round 3 P3: a chat left behind takes its automatic name off the row, but never a name the user chose", () => {
+  const list = [rec("a", { name: "Greeting" }), rec("b", { name: "Mine", nameByUser: true })];
+  const next = setEverydayName(list, "a", null);
+  expect(next[0].name).toBeUndefined();
+  expect(everydayChatName(next[0])).toBe("New chat");
+  expect(setEverydayName(next, "a", null)).toBe(next);
+  expect(setEverydayName(list, "b", null)).toBe(list);
 });

@@ -174,9 +174,9 @@ describe("T-335-b every product has a kit mark or a plain-text name", () => {
     }
   });
 
-  test("the card's calls: Cursor is a kit mark; Rovo Dev, Droid, Kilocode, Aider, Pi, OMP, OpenClaude and Mistral Vibe are name only", () => {
+  test("the card's calls: Cursor is a kit mark; Rovo Dev, Droid, Kilocode, Aider, Pi, OMP and Mistral Vibe are name only", () => {
     for (const id of ["claude", "codex", "copilot", "cursor"]) expect(markKind(id), id).toBe("kit");
-    for (const id of ["rovo", "droid", "kilo", "aider", "pi", "omp", "openclaude", "mistral-vibe"]) expect(markKind(id), id).toBe("name");
+    for (const id of ["rovo", "droid", "kilo", "aider", "pi", "omp", "mistral-vibe"]) expect(markKind(id), id).toBe("name");
   });
 
   test("open-in editors, shells and terminal apps all have a name, and the open-in presets are all covered", () => {

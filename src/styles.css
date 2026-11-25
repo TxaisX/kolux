@@ -300,7 +300,7 @@ input { font: inherit; }
 .sb-everyday-row .rename { flex: 1; min-width: 0; }
 .sb-everyday-new { color: var(--fg-muted); }
 .sb-everyday-new:disabled { color: var(--fg-disabled); cursor: default; background: transparent; }
-/* New session (2026-11-21): one button under the row, which opens OpenClaude's chat page in the folder. */
+/* New session (2026-11-21): one button under the row, which opens the chat page in the folder. */
 .sb-everyday-actions { padding: 2px 0 6px 22px; }
 /* plus menu: a fixed popover over everything, with a click-away backdrop (SESS-004) */
 /* DT-C266: this sheet takes the click outside a menu and draws nothing, yet putting it in the window made

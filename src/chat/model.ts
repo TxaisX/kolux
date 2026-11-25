@@ -37,7 +37,7 @@ export type ChatRead = {
 };
 
 /** CHAT-002: the agents whose sessions can be shown as chat (Grok waits for a public description of its session files, T-325-b). */
-export const CHAT_AGENTS = ["claude", "openclaude", "codex", "omp"] as const;
+export const CHAT_AGENTS = ["claude", "codex", "omp"] as const;
 
 export type OfferInput = {
   /** The agent Kolux credits with the program running in the pane (Rust `chat_support`). */
@@ -192,10 +192,11 @@ export function applyRead(prev: ChatItem[], read: ChatRead): ChatItem[] {
 export type Extra = { id: string; role: "user" | "assistant"; text: string; at: number };
 /** Something typed from chat that the transcript has not confirmed yet. `queued` marks a send typed
  *  while a turn was still running (the pane had a send with no result yet): that turn's rows keep
- *  streaming after it, so it waits at the tail instead of above them. */
-export type Pending = { id: string; text: string; at: number; failed?: boolean; queued?: boolean };
+ *  streaming after it, so it waits at the tail instead of above them. `held` marks a send that a Stop
+ *  passed over: nothing is answering it now, so it waits for its echo or its cancelled result. */
+export type Pending = { id: string; text: string; at: number; failed?: boolean; queued?: boolean; held?: boolean };
 /** A row of the conversation as drawn. */
-export type Row = (ChatItem & { row: "message" }) | { row: "preview"; id: string; text: string } | { row: "pending"; id: string; text: string; at: number; failed?: boolean };
+export type Row = (ChatItem & { row: "message" }) | { row: "preview"; id: string; text: string } | { row: "pending"; id: string; text: string; at: number; failed?: boolean; held?: boolean };
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 /** How far back a confirmed send may be timestamped from when it was typed. */
@@ -234,7 +235,7 @@ export function combine(transcript: ChatItem[], extras: Extra[], preview: string
   for (const p of pending) {
     const confirmed = transcript.some((t) => t.role === "user" && sentIn(t.text, p.text) && (t.at ?? Infinity) >= p.at - SEND_SLACK_MS);
     if (confirmed) continue;
-    const row: Row = { row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed };
+    const row: Row = { row: "pending", id: p.id, text: p.text, at: p.at, failed: p.failed, held: p.held };
     const i = waitingBefore(rows, p);
     if (i >= 0) rows.splice(i, 0, row);
     else late.push(row);
@@ -257,6 +258,20 @@ export function livePending(sent: Pending[], items: ChatItem[]): Pending[] {
 export function prunePending(sent: Pending[], items: ChatItem[]): Pending[] {
   const left = livePending(sent, items);
   return left.length === sent.length ? sent : left;
+}
+
+/** After a Stop: every send still unconfirmed is marked held, so nothing says it is being answered. With none
+ * to mark the very same array comes back. Pure. */
+export function holdPending(sent: Pending[]): Pending[] {
+  return sent.some((p) => !p.held && !p.failed) ? sent.map((p) => (p.held || p.failed ? p : { ...p, held: true })) : sent;
+}
+
+/** After a result of "cancelled" (OpenCode's confirmed word that a waiting message did not run): the oldest
+ * unconfirmed send goes, since the engine cancels in the order the messages were sent. With none the very same
+ * array comes back. Pure. */
+export function dropCancelled(sent: Pending[]): Pending[] {
+  const i = sent.findIndex((p) => !p.failed);
+  return i < 0 ? sent : [...sent.slice(0, i), ...sent.slice(i + 1)];
 }
 
 /** CHAT-020: a send shows up in a recorded user turn: the same text, or its lines inside a turn
