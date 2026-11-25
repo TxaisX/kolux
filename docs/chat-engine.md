@@ -279,9 +279,35 @@ an earlier stop with no answer) is still interrupted. A Stop acts only on the ch
    stream is ahead of its answer.
 3. No run is known to be going on and a message of this chat may be starting one with nothing
    heard of it yet: a message that waits, a `prompt` call still on its way, or one that ended
-   within the last 5 seconds without naming its inbox item. With nothing running there is nothing
-   to wait for, so that Stop answers `stopped {how: "interrupt"}` as soon as OpenCode took the
-   interrupt.
+   within the last 5 seconds without naming its inbox item. That interrupt reaches a session with
+   nothing running, so on its own it stops nothing: see "A Stop right after a send" below.
+
+**A Stop right after a send.** A message sent a moment ago may not have started its run yet, so the
+interrupt of the press finds nothing to stop, and the run would start after the Stop. Two rules
+close that:
+
+- *Not sent yet.* A send first wakes the server and posts a waiting model pick, and only then
+  makes its `prompt` call. A Stop pressed before that call keeps the message from being sent:
+  right before the call, under the chat's lock, the send checks whether a Stop was pressed since it
+  began, and if so it posts nothing and `chat_send` fails with "Not sent: Stop was pressed before
+  the message reached OpenCode." The page takes a failed send back (its count goes down by one, the
+  row is marked failed), so nothing is left waiting. Every Stop counts for this, also one that
+  leaves another pane's run alone. A message sent after the Stop goes out as usual.
+- *Sent, not started.* While a `prompt` call of this chat is on the wire, or a message of its own
+  waits that OpenCode did not cancel (the `DELETE` was refused: a run is taking it up), the Stop is
+  not over. It keeps looking, every 20 ms and for the stop grace at most: a message of this chat
+  that shows up waiting is cancelled, and a run that starts and is or may be this chat's own is
+  interrupted, once per run. `stopped` goes to the page only when that run has ended, so no reply
+  follows a Stop. If nothing is heard within the stop grace, the Stop gives up: `stopped {how:
+  "interrupt"}` when no run is known, `"ended"` with a cut turn when one of its own still runs.
+
+With nothing on the wire and nothing left waiting there is nothing to wait for, and the Stop answers
+`stopped {how: "interrupt"}` as soon as OpenCode took the interrupt.
+
+On the page, a Stop pressed within 700 ms of a click on Send is ignored (the second click of a
+double-click must not stop the turn it just started). A message sent from the keyboard has no second
+click, so Stop counts at once after Enter. Before 2026-11-24 the guard counted from every send, so a
+Stop within 700 ms of Enter never reached the engine and the reply ran to its end.
 
 Any other run known to be going on is another pane's and is never interrupted from here, whatever
 this chat has in the session: nothing, a message waiting behind that run, or one still on its way
