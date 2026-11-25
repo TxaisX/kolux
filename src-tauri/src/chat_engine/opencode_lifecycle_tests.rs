@@ -22,6 +22,8 @@ enum Reply {
     Late(Duration, String),
     /// An event stream that sends these frames and closes at once.
     Dropped(Vec<String>),
+    /// An event stream that sends each frame after its wait, then holds the connection open.
+    Stream(Vec<(Duration, String)>),
 }
 
 struct Fake {
@@ -80,6 +82,15 @@ fn serve_one(mut s: TcpStream, calls: Calls, answer: Answer) {
                 let _ = s.write_all(f.as_bytes());
             }
             let _ = s.flush();
+            std::thread::sleep(Duration::from_secs(30));
+        }
+        Reply::Stream(frames) => {
+            let _ = write!(s, "HTTP/1.1 200 OK\r\ncontent-type: text/event-stream\r\ncache-control: no-cache\r\nconnection: close\r\n\r\n");
+            for (wait, f) in frames {
+                std::thread::sleep(wait);
+                let _ = s.write_all(f.as_bytes());
+                let _ = s.flush();
+            }
             std::thread::sleep(Duration::from_secs(30));
         }
         Reply::Dropped(frames) => {
@@ -193,27 +204,6 @@ fn a_turn_lost_with_the_stream_ignores_late_events() {
     chat.heard(&k, &d);
     assert_eq!(kinds_of(&seen, "c1"), ["result"], "the lost turn does not reopen");
     assert!(!chat.busy());
-}
-
-// Finding 13: a stop or a failure forgets the messages that were still waiting.
-#[test]
-fn a_stopped_or_failed_run_forgets_messages_still_waiting() {
-    for end in ["session.execution.interrupted", "session.execution.failed"] {
-        let now = Instant::now();
-        let mut tr = Translator::new(SES);
-        let mut out = Vec::new();
-        for (k, d) in [
-            ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
-            ev("session.execution.started", json!({})),
-            ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
-            ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
-            ev(end, json!({})),
-        ] {
-            out.extend(tr.on_event(&k, &d, now));
-        }
-        assert!(matches!(out.last(), Some(ChatEvent::Result(_))), "{end}: {out:?}");
-        assert!(!tr.busy(), "{end}: a waiting message does not keep the chat busy");
-    }
 }
 
 // Finding 2: every permission question on this private server is answered, whatever its session.
@@ -449,29 +439,6 @@ fn the_npm_shim_of_opencode_starts_its_own_program() {
     assert_eq!(args, ["serve", "--hostname", "127.0.0.1", "--port", "0"]);
 }
 
-// Review 2 P1-1: a message still waiting when a run fails or is stopped gets a result of its own, so
-// the page never keeps waiting for it.
-#[test]
-fn a_failed_or_stopped_run_answers_every_waiting_message() {
-    for end in ["session.execution.interrupted", "session.execution.failed"] {
-        let now = Instant::now();
-        let mut tr = Translator::new(SES);
-        let mut out = Vec::new();
-        for (k, d) in [
-            ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
-            ev("session.execution.started", json!({})),
-            ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
-            ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
-            ev(end, json!({})),
-        ] {
-            out.extend(tr.on_event(&k, &d, now));
-        }
-        let results = out.iter().filter(|e| matches!(e, ChatEvent::Result(_))).count();
-        assert_eq!(results, 2, "{end}: one result for the run, one for the message still waiting: {out:?}");
-        assert!(!tr.busy());
-    }
-}
-
 // Review 2 P1-1: Stop with nothing running still tells the page, so its Stop never fails.
 #[test]
 fn stop_with_nothing_running_still_tells_the_page() {
@@ -545,25 +512,6 @@ fn a_stop_opencode_did_not_take_keeps_the_waiting_message() {
         chat.heard(&k, &d);
     }
     assert_eq!(kinds_of(&seen, "c1")[before..], ["user", "assistant", "result"]);
-}
-
-// Review 2 P3-1: a cut run that then ends stopped or failed drops the queue, and answers each message.
-#[test]
-fn a_cut_run_that_ends_stopped_answers_the_messages_sent_after_the_cut() {
-    for end in ["session.execution.interrupted", "session.execution.failed"] {
-        let now = Instant::now();
-        let mut tr = Translator::new(SES);
-        for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))] {
-            tr.on_event(&k, &d, now);
-        }
-        tr.cut(now);
-        let (k, d) = ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } }));
-        tr.on_event(&k, &d, now);
-        let (k, d) = ev(end, json!({}));
-        let out = tr.on_event(&k, &d, now);
-        assert_eq!(out.iter().filter(|e| matches!(e, ChatEvent::Result(_))).count(), 1, "{end}: {out:?}");
-        assert!(!tr.busy(), "{end}");
-    }
 }
 
 // Review 2 P3-2: a new server's models are read again, not the old server's list.
@@ -681,7 +629,7 @@ fn the_server_gets_no_user_name_of_the_users_own() {
 // pick kept would lock the chat): the next send goes on the session's own model.
 #[test]
 fn a_model_pick_refused_at_send_is_reported_and_dropped() {
-    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(500, "{\"message\":\"no such model\"}".to_string()) } else { plain(m, p) });
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(400, "{\"message\":\"no such model\"}".to_string()) } else { plain(m, p) });
     let (server, _) = server_on(&fake);
     let (seen, sink) = sink();
     let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
@@ -772,81 +720,6 @@ fn quick_server_on(fake: &Fake, tries: u32) -> Arc<Server> {
     Arc::new(s)
 }
 
-// Review 3 F1 (a): a message still waiting when the run ends (its own take-up was missed, or never
-// sent) gets a plain result, orphaned run or not; a run that then takes it up again adds none.
-#[test]
-fn a_message_still_waiting_when_the_run_ends_gets_its_result() {
-    let now = Instant::now();
-    let run = [
-        ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
-        ev("session.execution.started", json!({})),
-        ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
-        ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
-    ];
-    let (k_end, d_end) = ev("session.execution.succeeded", json!({}));
-    // Lost in the gap: m1's turn was ended on the page, m2's take-up was missed.
-    let mut tr = Translator::new(SES);
-    for (k, d) in run.clone() {
-        tr.on_event(&k, &d, now);
-    }
-    assert_eq!(results_of(&tr.lost(Vec::new(), now)).len(), 1);
-    let out = results_of(&tr.on_event(&k_end, &d_end, now));
-    assert_eq!(out.len(), 1, "m2 gets its result");
-    assert!(!out[0].is_error);
-    assert!(!tr.busy());
-    // Not orphaned: the run's own result, then m2's.
-    let mut tr = Translator::new(SES);
-    for (k, d) in run {
-        tr.on_event(&k, &d, now);
-    }
-    let out = results_of(&tr.on_event(&k_end, &d_end, now));
-    assert_eq!(out.len(), 2, "the run's result and m2's");
-    assert!(!tr.busy());
-    // A run that then takes m2 up after all is not answered twice.
-    let mut late = Vec::new();
-    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.text.ended", json!({ "assistantMessageID": "a2", "ordinal": 0, "text": "ok" })), ev("session.execution.succeeded", json!({}))] {
-        late.extend(tr.on_event(&k, &d, now));
-    }
-    assert!(results_of(&late).is_empty(), "m2 already has its result: {late:?}");
-    assert!(!tr.busy());
-}
-
-// Review 3 F1 (b): a run that ended while the stream was down is settled when the stream opens again.
-#[test]
-fn a_reopened_stream_settles_a_run_that_ended_in_the_gap() {
-    let opens = Arc::new(std::sync::atomic::AtomicUsize::new(0));
-    let o = Arc::clone(&opens);
-    let fake = fake(move |m: &str, p: &str| {
-        if p == "/api/event" {
-            if o.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
-                return Reply::Dropped(vec![
-                    CONNECTED.to_string(),
-                    frame("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
-                    frame("session.execution.started", json!({})),
-                    frame("session.inbox.delivered", json!({ "inboxID": "m1" })),
-                    frame("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
-                ]);
-            }
-            return Reply::Events(Duration::ZERO, vec![CONNECTED.to_string()]);
-        }
-        if m == "GET" && p.starts_with(&format!("/api/session/{SES}/message")) {
-            return Reply::Json(200, "{\"data\":[{\"id\":\"msg_z\",\"type\":\"idle\",\"outcome\":\"succeeded\"}]}".to_string());
-        }
-        plain(m, p)
-    });
-    let server = quick_server_on(&fake, 8);
-    let (seen, sink) = sink();
-    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 1, sink);
-    let w = Arc::clone(&server);
-    std::thread::spawn(move || {
-        let _ = w.wake();
-    });
-    let results = || kinds_of(&seen, "c1").iter().filter(|k| *k == "result").count();
-    wait_until("a result for m1 and one for m2", Duration::from_secs(5), || results() == 2);
-    assert!(!chat.busy());
-    server.shutdown();
-}
-
 // Review 3 F2: a refused model pick does not lock the chat: it is dropped, and a later pick and the
 // message go through.
 #[test]
@@ -917,43 +790,6 @@ fn an_event_stream_that_carries_events_is_never_given_up() {
     server.shutdown();
 }
 
-// Review 3 F4: Stop asks OpenCode to stop even when no turn was seen yet (a message sent whose
-// queueing was not heard).
-#[test]
-fn stop_with_nothing_seen_still_asks_opencode_to_stop() {
-    let fake = fake(plain);
-    let (server, _) = server_on(&fake);
-    let (_, _, gen) = server.wake().unwrap();
-    let (seen, sink) = sink();
-    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
-    assert_eq!(chat.stop(), Some(StopHow::Ended));
-    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 1);
-    assert_eq!(kinds_of(&seen, "c1"), ["stopped"]);
-    server.shutdown();
-}
-
-// Review 3 F5: a message OpenCode dropped is told "cancelled", which the page shows as a notice with
-// the reason, not as an interrupted turn.
-#[test]
-fn a_dropped_message_is_shown_as_cancelled() {
-    let now = Instant::now();
-    let mut tr = Translator::new(SES);
-    let mut out = Vec::new();
-    for (k, d) in [
-        ev("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
-        ev("session.execution.started", json!({})),
-        ev("session.inbox.delivered", json!({ "inboxID": "m1" })),
-        ev("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
-        ev("session.execution.interrupted", json!({})),
-    ] {
-        out.extend(tr.on_event(&k, &d, now));
-    }
-    let r = results_of(&out);
-    assert_eq!(r[0].subtype, "error_during_execution", "the stopped run");
-    assert_eq!((r[1].subtype.as_str(), r[1].is_error), ("cancelled", true), "the dropped message");
-    assert!(!r[1].errors.is_empty());
-}
-
 // Review 3 F6: a model list read from a server that went away meanwhile is not kept.
 #[test]
 fn a_model_list_read_across_a_restart_is_not_kept() {
@@ -983,4 +819,447 @@ fn a_closing_app_starts_no_server() {
     assert!(server.wake().is_err());
     assert!(envs.lock().unwrap().is_empty(), "no server was started");
     assert!(!server.is_running());
+}
+
+// ---- Inbox rules from OpenCode's own signals (review 4) ----
+
+fn queued(id: &str, text: &str) -> (String, Value) {
+    ev("session.inbox.enqueued", json!({ "inboxID": id, "item": { "type": "user", "payload": { "text": text }, "delivery": "steer" } }))
+}
+
+fn fed(tr: &mut Translator, events: &[(String, Value)]) -> Vec<ChatEvent> {
+    let now = Instant::now();
+    events.iter().flat_map(|(k, d)| tr.on_event(k, d, now)).collect()
+}
+
+fn kinds_in(out: &[ChatEvent]) -> Vec<String> {
+    out.iter().map(|e| serde_json::to_value(e).unwrap()["kind"].as_str().unwrap_or_default().to_string()).collect()
+}
+
+fn results_seen(seen: &Seen) -> Vec<TurnResult> {
+    seen.lock().unwrap().iter().filter_map(|(_, e)| if let ChatEvent::Result(r) = e { Some(r.clone()) } else { None }).collect()
+}
+
+fn subtypes(results: &[TurnResult]) -> Vec<String> {
+    results.iter().map(|r| r.subtype.clone()).collect()
+}
+
+fn said(id: &str, text: &str) -> (String, Value) {
+    ev("session.text.ended", json!({ "assistantMessageID": id, "ordinal": 0, "text": text }))
+}
+
+// (a) Review 4 item 1: a message still waiting when a run ends is not answered on a guess. It gets its
+// result from its own run, and its reply is shown.
+#[test]
+fn each_message_gets_one_result_from_its_own_run() {
+    let mut tr = Translator::new(SES);
+    let first = fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_of(&first).len(), 1, "only m1 is answered when m1's run ends: {first:?}");
+    assert!(tr.busy(), "m2 is still waiting for its run");
+    let second = fed(&mut tr, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), said("a2", "two done"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(kinds_in(&second), ["user", "assistant", "result"], "m2's reply is shown");
+    assert_eq!(results_of(&second)[0].result.as_deref(), Some("two done"));
+    assert!(!tr.busy());
+}
+
+// (b) OpenCode's own word that a waiting message was cancelled is the one "cancelled" result.
+#[test]
+fn a_message_opencode_cancels_gets_one_cancelled_result() {
+    let mut tr = Translator::new(SES);
+    fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two")]);
+    let out = fed(&mut tr, &[ev("session.inbox.delivery.changed", json!({ "inboxID": "m2", "delivery": "queue" })), ev("session.inbox.cancelled", json!({ "inboxID": "m2" })), ev("session.inbox.cancelled", json!({ "inboxID": "m2" })), ev("session.inbox.cancelled", json!({ "inboxID": "never_heard" }))]);
+    assert_eq!(kinds_in(&out), ["result"], "one result, and nothing for a repeat or an unknown message: {out:?}");
+    let r = &results_of(&out)[0];
+    assert_eq!((r.subtype.as_str(), r.is_error), ("cancelled", true));
+    assert!(!r.errors.is_empty(), "the notice says why");
+    let end = fed(&mut tr, &[ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_of(&end).len(), 1, "m1's own result");
+    assert!(!tr.busy());
+}
+
+// (c) OpenCode keeps a waiting message when the run before it fails or is stopped: no "cancelled".
+#[test]
+fn a_failed_or_stopped_run_keeps_the_waiting_message() {
+    for end in ["session.execution.interrupted", "session.execution.failed"] {
+        let mut tr = Translator::new(SES);
+        let out = fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two"), ev(end, json!({ "reason": "user" }))]);
+        let r = results_of(&out);
+        assert_eq!(r.len(), 1, "{end}: only the run that ended is answered: {out:?}");
+        assert_ne!(r[0].subtype, "cancelled", "{end}");
+        assert!(tr.busy(), "{end}: m2 is still waiting in OpenCode");
+    }
+}
+
+// BUG F (live run of 9861a261): m1 running, m2 queued, Stop. OpenCode keeps m2 and takes it up with
+// the next message, so m2 gets one honest result then, and never a "not run" notice.
+#[test]
+fn a_message_waiting_at_a_stop_runs_with_the_next_one() {
+    let mut tr = Translator::new(SES);
+    let stopped = fed(&mut tr, &[queued("m1", "count"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "cherry"), ev("session.execution.interrupted", json!({ "reason": "user" }))]);
+    assert_eq!(subtypes(&results_of(&stopped)), ["error_during_execution"]);
+    let next = fed(&mut tr, &[queued("m3", "ok"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.inbox.delivered", json!({ "inboxID": "m3" })), said("a3", "cherry ok"), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(kinds_in(&next), ["user", "user", "assistant", "result", "result"], "m2 and m3 each get one result");
+    assert!(results_of(&next).iter().all(|r| r.subtype == "success" && !r.is_error), "{next:?}");
+    assert!(!tr.busy());
+}
+
+// A cut run (a stop that got no word in time) that then ends keeps the message sent after the cut.
+#[test]
+fn a_cut_run_that_ends_keeps_the_message_sent_after_the_cut() {
+    for end in ["session.execution.interrupted", "session.execution.failed", "session.execution.succeeded"] {
+        let now = Instant::now();
+        let mut tr = Translator::new(SES);
+        fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" }))]);
+        assert_eq!(tr.cut(now).len(), 1);
+        let out = fed(&mut tr, &[queued("m2", "two"), ev(end, json!({}))]);
+        assert!(out.is_empty(), "{end}: the cut run's end answers nothing: {out:?}");
+        assert!(tr.busy(), "{end}: m2 still waits");
+        let run = fed(&mut tr, &[ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" })), ev("session.execution.succeeded", json!({}))]);
+        assert_eq!(kinds_in(&run), ["user", "result"], "{end}");
+    }
+}
+
+// OpenCode's own items (a compaction, a synthetic note) are not messages of the page: none adds a result.
+#[test]
+fn an_item_that_is_not_a_users_message_adds_no_result() {
+    let mut tr = Translator::new(SES);
+    let out = fed(&mut tr, &[queued("m1", "one"), ev("session.inbox.enqueued", json!({ "inboxID": "s1", "item": { "type": "synthetic", "payload": { "text": "note" } } })), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), ev("session.inbox.delivered", json!({ "inboxID": "s1" })), ev("session.execution.succeeded", json!({}))]);
+    assert_eq!(results_of(&out).len(), 1, "{out:?}");
+}
+
+/// A stand-in whose event stream drops once after `first`, then opens again and sends `second` (each
+/// frame after its wait); `state` answers the reads Kolux makes to learn what happened in the gap.
+fn gap_fake(first: Vec<String>, second: Vec<(Duration, String)>, state: impl Fn(&str) -> Option<Reply> + Send + Sync + 'static) -> Fake {
+    let opens = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    fake(move |m: &str, p: &str| {
+        if p == "/api/event" {
+            if opens.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                return Reply::Dropped(std::iter::once(CONNECTED.to_string()).chain(first.clone()).collect());
+            }
+            return Reply::Stream(std::iter::once((Duration::ZERO, CONNECTED.to_string())).chain(second.clone()).collect());
+        }
+        if m == "GET" {
+            if let Some(r) = state(p) {
+                return r;
+            }
+        }
+        plain(m, p)
+    })
+}
+
+fn m1_running_m2_waiting() -> Vec<String> {
+    vec![
+        frame("session.inbox.enqueued", json!({ "inboxID": "m1", "item": { "type": "user", "payload": { "text": "one" } } })),
+        frame("session.execution.started", json!({})),
+        frame("session.inbox.delivered", json!({ "inboxID": "m1" })),
+        frame("session.inbox.enqueued", json!({ "inboxID": "m2", "item": { "type": "user", "payload": { "text": "two" } } })),
+    ]
+}
+
+const IDLE_OK: &str = "{\"data\":[{\"id\":\"msg_z\",\"type\":\"idle\",\"outcome\":\"succeeded\"}]}";
+const NO_IDLE: &str = "{\"data\":[{\"id\":\"msg_a\",\"type\":\"assistant\"}]}";
+
+/// OpenCode's answers after a gap: is the session running, what still waits, and which messages it has.
+fn after_gap(active: bool, waiting: &'static [&'static str], has: &'static [&'static str], last: &'static str) -> impl Fn(&str) -> Option<Reply> + Send + Sync + 'static {
+    move |p: &str| {
+        if p == "/api/session/active" {
+            return Some(Reply::Json(200, if active { format!("{{\"data\":{{\"{SES}\":{{\"type\":\"running\"}}}}}}") } else { "{\"data\":{}}".to_string() }));
+        }
+        if p == format!("/api/session/{SES}/inbox") {
+            let items: Vec<String> = waiting.iter().map(|id| format!("{{\"id\":\"{id}\",\"type\":\"user\"}}")).collect();
+            return Some(Reply::Json(200, format!("{{\"data\":[{}]}}", items.join(","))));
+        }
+        if let Some(id) = p.strip_prefix(&format!("/api/session/{SES}/message/")) {
+            return Some(if has.contains(&id) { Reply::Json(200, format!("{{\"data\":{{\"id\":\"{id}\",\"type\":\"user\"}}}}")) } else { Reply::Json(404, "{\"name\":\"NotFoundError\"}".to_string()) });
+        }
+        if p.starts_with(&format!("/api/session/{SES}/message?")) {
+            return Some(Reply::Json(200, last.to_string()));
+        }
+        None
+    }
+}
+
+fn chat_on(fake: &Fake) -> (Arc<Server>, Arc<OpenChat>, Seen) {
+    let server = quick_server_on(fake, 8);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 1, sink);
+    let w = Arc::clone(&server);
+    std::thread::spawn(move || {
+        let _ = w.wake();
+    });
+    (server, chat, seen)
+}
+
+// (d) Review 4 item 2: the stream is lost while m2 waits, and OpenCode still lists m2 as waiting when
+// the stream is back: m2 is not answered, whatever the last idle message says.
+#[test]
+fn a_message_still_waiting_after_a_lost_stream_is_not_answered() {
+    let fake = gap_fake(m1_running_m2_waiting(), Vec::new(), after_gap(false, &["m2"], &["m1"], IDLE_OK));
+    let (server, chat, seen) = chat_on(&fake);
+    wait_until("the waiting list is read after the gap", Duration::from_secs(5), || fake.count("GET", &format!("/api/session/{SES}/inbox")) >= 1);
+    wait_until("the unseen run is known to be over", Duration::from_secs(5), || !chat.lock().tr.orphaned());
+    std::thread::sleep(Duration::from_millis(200));
+    assert_eq!(subtypes(&results_seen(&seen)), ["connection_lost"], "only m1's lost turn is ended");
+    assert!(chat.busy(), "m2 still waits");
+    server.shutdown();
+}
+
+// (e) The stream is lost and m2 ran to its end in the gap: m2 gets exactly one result.
+#[test]
+fn a_message_run_in_the_gap_gets_exactly_one_result() {
+    let fake = gap_fake(m1_running_m2_waiting(), Vec::new(), after_gap(false, &[], &["m1", "m2"], IDLE_OK));
+    let (server, chat, seen) = chat_on(&fake);
+    wait_until("a result for m1 and one for m2", Duration::from_secs(5), || results_seen(&seen).len() == 2);
+    std::thread::sleep(Duration::from_millis(200));
+    assert_eq!(subtypes(&results_seen(&seen)), ["connection_lost", "success"]);
+    let kinds = kinds_of(&seen, "c1");
+    assert_eq!(kinds[kinds.len() - 2..], ["user", "result"], "m2's waiting row is confirmed, then ended: {kinds:?}");
+    assert!(!chat.busy());
+    assert_eq!(fake.count("GET", &format!("/api/session/{SES}/message/m2")), 1, "OpenCode is asked whether it has m2 as a message");
+    server.shutdown();
+}
+
+// (e) again, with the run that took m2 up still going: it is followed from here, and ends as m2's turn.
+#[test]
+fn a_message_taken_up_in_the_gap_is_followed_to_its_end() {
+    let later = vec![(Duration::from_millis(1000), frame("session.text.ended", json!({ "assistantMessageID": "a2", "ordinal": 0, "text": "two done" }))), (Duration::ZERO, frame("session.execution.succeeded", json!({})))];
+    let fake = gap_fake(m1_running_m2_waiting(), later, after_gap(true, &[], &["m1", "m2"], NO_IDLE));
+    let (server, chat, seen) = chat_on(&fake);
+    wait_until("a result for m1 and one for m2", Duration::from_secs(5), || results_seen(&seen).len() == 2);
+    let kinds = kinds_of(&seen, "c1");
+    assert_eq!(kinds[kinds.len() - 3..], ["user", "assistant", "result"], "m2's reply is shown: {kinds:?}");
+    assert_eq!(results_seen(&seen)[1].result.as_deref(), Some("two done"));
+    assert!(!chat.busy());
+    server.shutdown();
+}
+
+// (f) The run ended in the gap with a shutdown interrupt, which writes no idle message: the session
+// is not running, so the unseen run is no longer waited for.
+#[test]
+fn a_run_ended_by_a_shutdown_in_the_gap_is_not_waited_for() {
+    let first = m1_running_m2_waiting()[..3].to_vec();
+    let fake = gap_fake(first, Vec::new(), after_gap(false, &[], &["m1"], NO_IDLE));
+    let (server, chat, seen) = chat_on(&fake);
+    wait_until("the lost turn is ended on the page", Duration::from_secs(5), || results_seen(&seen).len() == 1);
+    wait_until("the unseen run is known to be over", Duration::from_secs(5), || !chat.lock().tr.orphaned());
+    assert_eq!(results_seen(&seen).len(), 1);
+    assert!(!chat.busy());
+    server.shutdown();
+}
+
+// A message OpenCode neither lists as waiting nor has as a message was cancelled in the gap.
+#[test]
+fn a_message_cancelled_in_the_gap_is_told_cancelled() {
+    let fake = gap_fake(m1_running_m2_waiting(), Vec::new(), after_gap(false, &[], &["m1"], IDLE_OK));
+    let (server, chat, seen) = chat_on(&fake);
+    wait_until("a result for m1 and one for m2", Duration::from_secs(5), || results_seen(&seen).len() == 2);
+    assert_eq!(subtypes(&results_seen(&seen)), ["connection_lost", "cancelled"]);
+    assert_eq!(fake.count("GET", &format!("/api/session/{SES}/message/m2")), 1);
+    assert!(!chat.busy());
+    server.shutdown();
+}
+
+// OpenCode gives no answer about the gap: nothing is guessed.
+#[test]
+fn a_gap_opencode_does_not_explain_answers_nothing() {
+    let fake = gap_fake(m1_running_m2_waiting(), Vec::new(), |p: &str| {
+        if p == "/api/session/active" {
+            Some(Reply::Json(500, "{}".to_string()))
+        } else if p.contains("/message?") {
+            Some(Reply::Json(200, IDLE_OK.to_string()))
+        } else {
+            None
+        }
+    });
+    let (server, chat, seen) = chat_on(&fake);
+    wait_until("OpenCode is asked", Duration::from_secs(5), || fake.count("GET", "/api/session/active") >= 1);
+    std::thread::sleep(Duration::from_millis(300));
+    assert_eq!(results_seen(&seen).len(), 1, "only m1's lost turn");
+    assert!(chat.busy() && chat.lock().tr.orphaned());
+    server.shutdown();
+}
+
+// Review 4 item 7: Stop in a chat that shows nothing running and sent nothing leaves the session alone
+// (it may be running in another pane).
+#[test]
+fn stop_with_nothing_sent_does_not_interrupt_the_session() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 0);
+    assert_eq!(kinds_of(&seen, "c1"), ["stopped"]);
+    server.shutdown();
+}
+
+// Item 7, the other half: a message on its way to OpenCode, not heard as queued yet, is still stopped.
+#[test]
+fn stop_while_a_message_is_on_its_way_asks_opencode_to_stop() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Late(Duration::from_millis(700), "{\"data\":{\"id\":\"msg_1\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (_seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    let c = Arc::clone(&chat);
+    let sending = std::thread::spawn(move || c.send("hi", &[]));
+    wait_until("the message is on its way", Duration::from_secs(5), || fake.any("/prompt"));
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/interrupt")), 1);
+    sending.join().unwrap().unwrap();
+    server.shutdown();
+}
+
+// A Stop takes back the messages still waiting: OpenCode is asked to cancel each, and only its own
+// word (`session.inbox.cancelled`) ends one as "cancelled".
+#[test]
+fn a_stop_asks_opencode_to_cancel_the_waiting_messages() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    for (k, d) in [queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), queued("m2", "two")] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(chat.stop(), Some(StopHow::Ended));
+    assert_eq!(fake.count("DELETE", &format!("/api/session/{SES}/inbox/m2")), 1);
+    assert_eq!(subtypes(&results_seen(&seen)), ["error_during_execution"], "m2 is not ended on a guess");
+    assert!(chat.busy());
+    let (k, d) = ev("session.inbox.cancelled", json!({ "inboxID": "m2" }));
+    chat.heard(&k, &d);
+    assert_eq!(subtypes(&results_seen(&seen)), ["error_during_execution", "cancelled"]);
+    assert!(!chat.busy());
+    server.shutdown();
+}
+
+// A message OpenCode accepted is known as waiting from its answer, before its queueing is heard.
+#[test]
+fn a_sent_message_waits_from_opencodes_own_answer() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/prompt") { Reply::Json(200, "{\"data\":{\"id\":\"msg_1\",\"type\":\"user\"}}".to_string()) } else { plain(m, p) });
+    let (server, _) = server_on(&fake);
+    let (_, _, gen) = server.wake().unwrap();
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, gen, sink);
+    chat.send("hi", &[]).unwrap();
+    assert!(chat.busy(), "the message waits in OpenCode");
+    for (k, d) in [ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "msg_1" })), ev("session.execution.succeeded", json!({}))] {
+        chat.heard(&k, &d);
+    }
+    assert_eq!(kinds_of(&seen, "c1"), ["user", "result"]);
+    assert!(!chat.busy());
+    server.shutdown();
+}
+
+/// A chat with a model pick made while the server slept, and the stand-in's server then up.
+fn chat_with_a_waiting_pick(fake: &Fake) -> (Arc<Server>, Arc<OpenChat>, Seen) {
+    let (server, _) = server_on(fake);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, Some(json!({ "id": "old", "providerID": "opencode" })), 0, sink);
+    let mut pick = spec(Vec::new());
+    pick.model = Some("opencode/first".to_string());
+    chat.retarget(pick).unwrap();
+    server.wake().unwrap();
+    (server, chat, seen)
+}
+
+fn waiting_pick(chat: &OpenChat) -> Option<String> {
+    chat.lock().pending_model.as_ref().and_then(|m| m.get("id")).and_then(Value::as_str).map(str::to_string)
+}
+
+// Review 4 item 3: a pick that fails to post does not lose the pick that was waiting before it.
+#[test]
+fn a_failed_model_switch_keeps_the_pick_that_was_waiting() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(503, "{}".to_string()) } else { plain(m, p) });
+    let (server, chat, _) = chat_with_a_waiting_pick(&fake);
+    let mut next = spec(Vec::new());
+    next.model = Some("opencode/second".to_string());
+    assert!(chat.retarget(next).is_err());
+    assert_eq!(waiting_pick(&chat).as_deref(), Some("first"), "the earlier pick still waits for the next message");
+    assert_eq!(chat.lock().spec.model.as_deref(), Some("opencode/first"));
+    server.shutdown();
+}
+
+// Item 3, the other half: a pick that is applied replaces the one that was waiting.
+#[test]
+fn an_applied_model_switch_replaces_the_pick_that_was_waiting() {
+    let fake = fake(plain);
+    let (server, chat, _) = chat_with_a_waiting_pick(&fake);
+    let mut next = spec(Vec::new());
+    next.model = Some("opencode/second".to_string());
+    chat.retarget(next).unwrap();
+    assert_eq!(waiting_pick(&chat), None);
+    assert_eq!(fake.count("POST", &format!("/api/session/{SES}/model")), 1);
+    server.shutdown();
+}
+
+// Review 4 item 4: a server error on a model pick is "no answer", not a refusal: the pick stays.
+#[test]
+fn a_server_error_on_a_model_pick_is_not_a_refusal() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(500, "{\"message\":\"boom\"}".to_string()) } else { plain(m, p) });
+    let (server, chat, _) = chat_with_a_waiting_pick(&fake);
+    let e = chat.send("hi", &[]).unwrap_err();
+    assert!(e.contains("Send again to retry"), "{e}");
+    assert_eq!(waiting_pick(&chat).as_deref(), Some("first"), "the pick is tried again with the next message");
+    assert!(!fake.any("/prompt"));
+    server.shutdown();
+}
+
+// Review 4 item 4: a refused pick whose re-read fails does not wipe the chat's model. What the session
+// is on is not known, so the pick stays waiting instead of a guess being shown.
+#[test]
+fn a_refused_pick_whose_reread_fails_keeps_the_chats_model() {
+    let fake = fake(|m: &str, p: &str| if p.ends_with("/model") { Reply::Json(400, "{\"message\":\"no such model\"}".to_string()) } else if m == "GET" && p == format!("/api/session/{SES}") { Reply::Json(500, "{}".to_string()) } else { plain(m, p) });
+    let (server, chat, _) = chat_with_a_waiting_pick(&fake);
+    assert!(chat.send("hi", &[]).is_err());
+    assert!(chat.lock().model.is_some(), "the model is only replaced by one OpenCode names");
+    assert!(chat.lock().spec.model.is_some());
+    assert!(!fake.any("/prompt"));
+    server.shutdown();
+}
+
+// Review 4 item 6: an answer about the gap that arrives after the chat closed is not sent to the page.
+#[test]
+fn a_gap_answer_for_a_closed_chat_is_not_sent() {
+    let fake = fake(plain);
+    let (server, _) = server_on(&fake);
+    let (seen, sink) = sink();
+    let chat = OpenChat::attach(&server, "c1", spec(Vec::new()), SES, None, 0, sink);
+    let (k, d) = queued("m1", "one");
+    chat.heard(&k, &d);
+    chat.lock().closed = true;
+    chat.reconciled(&Gap { active: false, fates: vec![("m1".to_string(), Fate::Gone)], failed: false });
+    assert!(kinds_of(&seen, "c1").is_empty(), "nothing after the close");
+    assert!(chat.busy(), "and nothing was settled for it");
+}
+
+// A message heard on the stream while OpenCode was being asked is left to the stream: no second result.
+#[test]
+fn a_gap_answer_does_not_repeat_what_the_stream_said() {
+    let mut tr = Translator::new(SES);
+    fed(&mut tr, &[queued("m2", "two"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m2" }))]);
+    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: false }, Instant::now());
+    assert!(out.is_empty(), "{out:?}");
+    assert_eq!(results_of(&fed(&mut tr, &[ev("session.execution.succeeded", json!({}))])).len(), 1);
+}
+
+// A message whose run went unseen and ended badly is told so, once.
+#[test]
+fn a_message_whose_unseen_run_failed_gets_one_error_result() {
+    let mut tr = Translator::new(SES);
+    fed(&mut tr, &[queued("m2", "two")]);
+    let out = tr.reconcile(&Gap { active: false, fates: vec![("m2".to_string(), Fate::Taken)], failed: true }, Instant::now());
+    assert_eq!(kinds_in(&out), ["user", "result"]);
+    assert_eq!(subtypes(&results_of(&out)), ["error_during_execution"]);
+    assert!(!tr.busy());
+}
+
+// The answer to a `prompt` call can come after the stream already said the message was taken up.
+#[test]
+fn a_late_prompt_answer_does_not_set_a_taken_message_waiting_again() {
+    let mut tr = Translator::new(SES);
+    fed(&mut tr, &[queued("m1", "one"), ev("session.execution.started", json!({})), ev("session.inbox.delivered", json!({ "inboxID": "m1" })), ev("session.execution.succeeded", json!({}))]);
+    tr.admit("m1", "one");
+    assert!(!tr.busy());
 }

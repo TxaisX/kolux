@@ -64,19 +64,39 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
 - A stream that closes is opened again. One that fails to open (a refused status, no connection) is
   tried again after a wait that doubles each time (from 300 ms, at most 10 s); after 8 failures in a
   row the server is ended and each chat gets a `stderr` line saying why, then `exit {reason: "crashed"}`.
-  A stream that opens but closes within 5 seconds with no session event in it counts as a failure
-  too. A stream that carried session events is never counted, however often it drops, so a server
-  that works is never ended for its stream.
+  A stream that opens but closes within 5 seconds having carried nothing but `server.*` events
+  (the greeting, a heartbeat) counts as a failure too. A stream that carried any other event (of any
+  session, or a permission question), or stayed open 5 seconds, is never counted, however often it
+  drops, so a server that works is never ended for its stream.
 - A turn the page was told is over before OpenCode said so (a stop that got no answer in time, a
-  lost stream) stays over: that run's late events are dropped until the next run starts. A message
-  that was still waiting is kept: when OpenCode takes it up, it is shown as a turn of its own. When
-  the run ends well with a message still waiting (it was taken up while the stream was lost), that
-  message gets a plain `result` of its own.
-- When a lost stream opens again, each chat with a cut run or a waiting message reads its session's
-  last message (`GET /api/session/{id}/message?limit=1&order=desc`). If the session is idle, the
-  cut run is over and each waiting message gets its `result`: a success when the run succeeded, a
-  `cancelled` one when it was stopped or failed. So a run that ended in the gap never leaves the
-  chat looking busy.
+  lost stream) stays over: that run's late events are dropped until OpenCode says the run ended or
+  the next run starts, and that run's own end adds no second `result`.
+- **Waiting messages: one `result` per message, from OpenCode's own word only.** OpenCode keeps a
+  sent message in the session's inbox until a run takes it up (`session.inbox.delivered`) or it is
+  cancelled (`session.inbox.cancelled`). Nothing else removes it: a run that succeeds, fails or is
+  interrupted leaves the inbox alone, and a message left waiting after a stop is taken up by the
+  next run, together with the next message. So the engine keeps a waiting message until one of
+  those two events, and never answers one on a guess while the stream is live:
+  - taken up: `user` (the echo), and one `result` when the run that took it up ends;
+  - cancelled: one `result {subtype: "cancelled"}`;
+  - a run that ends with a message still waiting ends only the messages it took up.
+  A message is known as waiting from the answer to its `prompt` call (the inbox item's id), so it
+  does not depend on `session.inbox.enqueued` being heard. Only a user's message counts: OpenCode's
+  own inbox items (a compaction, a synthetic note) add no `result`.
+- **After a lost stream** the engine asks OpenCode what happened in the gap instead of guessing. For
+  each chat with a cut run or a waiting message it reads `GET /api/session/active` (the sessions
+  running now), `GET /api/session/{id}/inbox` (the messages still waiting) and, for each waiting
+  message no longer in the inbox, `GET /api/session/{id}/message/{messageID}` (a delivered message
+  keeps its inbox id). Then, per message:
+  - still in the inbox: it stays waiting, with no `result`;
+  - a saved message, session still running: the run is followed from here as that message's turn
+    (`user` now, its `result` when the run ends);
+  - a saved message, session not running: `user` and exactly one `result` (an error one when the
+    session's last message is an idle marker that says the run failed or was interrupted);
+  - neither in the inbox nor a saved message: one `result {subtype: "cancelled"}`.
+  A session that is not running has no cut run left to wait for, whatever its last message is (a
+  run ended by a shutdown writes no idle marker). A read that gets no answer settles nothing:
+  unknown is never taken as idle. A message heard on the stream meanwhile is left to the stream.
 - Once the app is quitting, nothing starts the server again (a late send or model read is refused).
 
 Why a shared server and not one `opencode run` per turn: sessions, the model list, delete and history
@@ -91,8 +111,10 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 | `POST /api/session` | a new chat (`directory` is the chat's `cwd`) |
 | `GET /api/session/{id}` | a resumed chat: the session must exist |
 | `POST /api/session/{id}/model` `{model: {id, providerID, variant?}}` | the model and the effort (`variant`), at open and whenever the page picks another pair |
-| `POST /api/session/{id}/prompt` | one user message |
+| `POST /api/session/{id}/prompt` | one user message; the answer's `data.id` is its inbox id |
 | `POST /api/session/{id}/interrupt` | Stop |
+| `DELETE /api/session/{id}/inbox/{inboxID}` | Stop: cancel a message still waiting |
+| `GET /api/session/active`, `GET /api/session/{id}/inbox`, `GET /api/session/{id}/message/{messageID}`, `GET /api/session/{id}/message?limit=1&order=desc` | after a lost stream: what ran, what still waits, how the last run ended |
 | `GET /api/session?directory=` | `chat_sessions` |
 | `DELETE /api/session/{id}` | `chat_session_delete` |
 | `GET /api/session/{id}/message` | `chat_history` (the newest 200 messages) |
@@ -103,11 +125,15 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 - The model and the effort can change between turns of one chat with no restart: `chat_start` on a
   chat id that is already open on the same folder and the same session only posts the new pair and
   emits a fresh `init`. With the server asleep the pick is kept and applied before the next message.
-  If OpenCode refuses it then, the message is not sent, the chat gets a `stderr` line saying so, the
-  pick is dropped and the chat is back on the session's own model (a fresh `init`), so the next
-  message goes. Only a pick that got no answer at all stays waiting for the next send. A new pick
-  made while the server is up replaces any pick still waiting. A resumed chat whose pick is refused
-  still opens, on the session's own model, with a `stderr` line.
+  If OpenCode refuses it then (a 4xx answer), the message is not sent, the chat gets a `stderr` line
+  saying so, the pick is dropped and the chat shows the session's own model again (a fresh `init`),
+  so the next message goes. The chat's model is only ever replaced by one OpenCode names: a session
+  read that names none leaves the last model OpenCode took from this chat, and if the read fails
+  nothing is changed and the pick stays waiting. A pick that got
+  no answer at all, or a server error (5xx), stays waiting for the next send too. A new pick made
+  while the server is up replaces a pick still waiting only once OpenCode has taken the new one; if
+  that call fails, the older pick still waits. A resumed chat whose pick is refused still opens, on
+  the session's own model, with a `stderr` line.
 - Efforts are per model and come from the model list (`efforts`). Seen 2026-11-24: DeepSeek V4.1
   Flash `none, low, high, max`; Claude Opus 5.5 `low, medium, high, xhigh, max`; GPT-5.5 `none, low,
   medium, high, xhigh`; some models none.
@@ -127,8 +153,10 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 |---|---|
 | chat opened, or the server woken for it | `started {pid, resumed}` (the server's pid) |
 | session created, resumed, or given another model or effort | `init {sessionId, cwd, model, permissionMode: "bypassPermissions", effort, raw}`; `sessionId` is OpenCode's session id |
-| `session.inbox.enqueued` | remembered |
-| `session.inbox.delivered` | `user {text: [the message]}` |
+| `session.inbox.enqueued` | remembered (a user's message only) |
+| `session.inbox.delivered` | `user {text: [the message]}` for a remembered message; nothing for any other item |
+| `session.inbox.cancelled` | `result {subtype: "cancelled", isError: true, errors: [why it was not run]}` for a remembered message; nothing otherwise |
+| `session.inbox.delivery.changed` | nothing |
 | `session.execution.started`, `session.step.started`, `session.text.started`, `session.reasoning.started`, `session.tool.input.started` | nothing |
 | `session.text.delta`, `session.reasoning.delta` | `assistant` with every block of the message so far (`messageId` is OpenCode's assistant message id, `model` is `providerID/id`), at most one per 80 ms per message |
 | `session.text.ended`, `session.reasoning.ended`, `session.tool.called` | `assistant`, always |
@@ -137,9 +165,9 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 | `session.step.failed` | the error is remembered for the turn's `result` |
 | `session.retry.scheduled` | `apiRetry` |
 | `session.compaction.ended` | `compactBoundary {trigger}` |
-| `session.execution.succeeded` | `result {subtype: "success", sessionId, numTurns, durationMs, totalCostUsd, usage, result}`, and one more success `result` for each further message delivered in that run or still waiting at its end |
-| `session.execution.interrupted` | `result {subtype: "error_during_execution", isError: true}`; each message still queued is forgotten and gets its own `result {subtype: "cancelled", isError: true, errors: [why it was not run]}` |
-| `session.execution.failed` | `result {isError: true, subtype: the error's type or "failed", errors: [message]}`; each message still queued is forgotten and gets its own `result {subtype: "cancelled", isError: true, errors: [why it was not run]}` |
+| `session.execution.succeeded` | `result {subtype: "success", sessionId, numTurns, durationMs, totalCostUsd, usage, result}`, and one more success `result` for each further message delivered in that run. A message still waiting gets none: it stays waiting |
+| `session.execution.interrupted` | `result {subtype: "error_during_execution", isError: true}`, and a plain success `result` for each further message delivered in that run. A message still waiting stays waiting (OpenCode keeps it) |
+| `session.execution.failed` | `result {isError: true, subtype: the error's type or "failed", errors: [message]}`, and a plain success `result` for each further message delivered in that run. A message still waiting stays waiting (OpenCode keeps it) |
 | `session.tool.input.delta`, `session.tool.input.ended`, `session.tool.progress`, `session.usage.updated` | dropped |
 | any other session event | `raw {line: the event type, json}` |
 | the event stream is lost during a turn | `result {isError: true, subtype: "connection_lost"}` |
@@ -151,12 +179,17 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 **Stop.** `chat_stop` posts the interrupt and waits the stop grace for the turn to end:
 `stopped {how: "interrupt"}` when it does, `stopped {how: "ended"}` when it does not. The shared
 server is never ended for one chat's stop. A run the page was already told is over (a lost stream,
-an earlier stop with no answer) is still interrupted. With nothing seen running, the interrupt is
-still posted when the server is up (a message just sent may be starting unheard), and an OpenCode
-chat answers `stopped {how: "ended"}` (and returns `"ended"`, never `null`), so the page never
-waits. When
-the interrupt was taken but the turn did not end in time, each message still queued gets a `result`;
-when the interrupt could not be sent, queued messages are kept and run as turns of their own.
+an earlier stop with no answer) is still interrupted. With nothing seen running and no message
+waiting, the session is left alone (it may be running in another pane): the interrupt is posted
+only while one of this chat's own `prompt` calls is still on its way, or ended within the last 5
+seconds without naming its inbox item. Either way an OpenCode chat answers `stopped {how: "ended"}`
+(and returns `"ended"`, never `null`), so the page never waits.
+
+A Stop also takes back the messages still waiting: after the interrupt, each one is cancelled with
+`DELETE /api/session/{id}/inbox/{inboxID}`. A message gets its `cancelled` result only when OpenCode
+says so (`session.inbox.cancelled`), which can be after `stopped`. If OpenCode does not cancel one
+(it was taken up first, or the call did not land), the message stays waiting and gets its `result`
+from the run that takes it up, which OpenCode starts with the next message sent.
 
 **Sleep and exit.** The server is ended after `IDLE_SLEEP` (10 minutes) with no event and no busy
 chat, or after `BUSY_IDLE_SLEEP` (60 minutes) of silence while a turn looks busy; every open chat
