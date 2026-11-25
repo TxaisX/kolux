@@ -83,6 +83,17 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
   A message is known as waiting from the answer to its `prompt` call (the inbox item's id), so it
   does not depend on `session.inbox.enqueued` being heard. Only a user's message counts: OpenCode's
   own inbox items (a compaction, a synthetic note) add no `result`.
+- **Only a chat's own messages are its own.** One session can be open in two chats, and both hear
+  every event of it. A message belongs to the chat whose `prompt` call OpenCode answered with its
+  inbox id, and to no other. For a message another chat sent, a chat only mirrors: the `user` echo
+  and the reply are shown, it gets no `result` for the message and no `cancelled`, the message does
+  not make it busy, and its Stop and its close leave that run and that waiting message alone. A run
+  that took up none of a chat's own messages still ends there with one `result`, which closes the
+  turn its page drew. A run that took up messages of both chats gives each chat one `result` per
+  message of its own. Two fallbacks, both from OpenCode's answer to the chat's own call: a `prompt`
+  call that got no answer makes the next message heard queued within 5 seconds that chat's own; a
+  `prompt` call OpenCode accepted without naming an inbox id makes the chat count every message of
+  the session as its own from then on (it cannot tell them apart).
 - **After a lost stream** the engine asks OpenCode what happened in the gap instead of guessing. For
   each chat with a cut run or a waiting message it reads `GET /api/session/active` (the sessions
   running now), `GET /api/session/{id}/inbox` (the messages still waiting) and, for each waiting
@@ -97,6 +108,17 @@ the session open (one session may be open in two chats). Each chat is one OpenCo
   A session that is not running has no cut run left to wait for, whatever its last message is (a
   run ended by a shutdown writes no idle marker). A read that gets no answer settles nothing:
   unknown is never taken as idle. A message heard on the stream meanwhile is left to the stream.
+  Two cases where the reads and the stream disagree in time:
+  - a run's end is heard after OpenCode was asked and before its answer is applied: "still running"
+    is old news, so the message gets its one `result` now instead of a turn with no end to come;
+  - the reads were ahead of the stream, and the stream then replays the run of a message already
+    given its `result`: that run adds nothing (its events are dropped until its end).
+  The same questions are asked in two more cases, on the same rules: when a server went away with
+  a run cut or a message waiting, the next server is asked as soon as its stream opens; and when a
+  session commits a revert (`session.revert.committed`), which removes waiting messages with no
+  `session.inbox.cancelled` for them.
+  An answer for a chat that closed meanwhile is not sent, and nothing of it follows the chat's
+  `exit` (the answer is sent under the chat's lock; so is the end of a Stop).
 - Once the app is quitting, nothing starts the server again (a late send or model read is refused).
 
 Why a shared server and not one `opencode run` per turn: sessions, the model list, delete and history
@@ -133,7 +155,9 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
   no answer at all, or a server error (5xx), stays waiting for the next send too. A new pick made
   while the server is up replaces a pick still waiting only once OpenCode has taken the new one; if
   that call fails, the older pick still waits. A resumed chat whose pick is refused still opens, on
-  the session's own model, with a `stderr` line.
+  the session's own model, with a `stderr` line. A resumed chat whose pick got no answer or a
+  server error opens too, with a `stderr` line saying it is still on its old model; the pick waits
+  for the next send.
 - Efforts are per model and come from the model list (`efforts`). Seen 2026-11-24: DeepSeek V4.1
   Flash `none, low, high, max`; Claude Opus 5.5 `low, medium, high, xhigh, max`; GPT-5.5 `none, low,
   medium, high, xhigh`; some models none.
@@ -179,14 +203,16 @@ MCP servers starting) on every message and has no way to stop or queue a turn.
 **Stop.** `chat_stop` posts the interrupt and waits the stop grace for the turn to end:
 `stopped {how: "interrupt"}` when it does, `stopped {how: "ended"}` when it does not. The shared
 server is never ended for one chat's stop. A run the page was already told is over (a lost stream,
-an earlier stop with no answer) is still interrupted. With nothing seen running and no message
-waiting, the session is left alone (it may be running in another pane): the interrupt is posted
-only while one of this chat's own `prompt` calls is still on its way, or ended within the last 5
-seconds without naming its inbox item. Either way an OpenCode chat answers `stopped {how: "ended"}`
+an earlier stop with no answer) is still interrupted. A Stop acts only on the chat's own messages
+(see "Only a chat's own messages are its own"): with none of them running or waiting, the session
+is left alone, even when a run another pane started is going on and mirrored here. The interrupt is
+then posted only while one of this chat's own `prompt` calls is still on its way, or ended within
+the last 5 seconds without naming its inbox item. Either way an OpenCode chat answers `stopped {how: "ended"}`
 (and returns `"ended"`, never `null`), so the page never waits.
 
-A Stop also takes back the messages still waiting: after the interrupt, each one is cancelled with
-`DELETE /api/session/{id}/inbox/{inboxID}`. A message gets its `cancelled` result only when OpenCode
+A Stop also takes back the chat's own messages still waiting: after the interrupt, each one is
+cancelled with `DELETE /api/session/{id}/inbox/{inboxID}`. Another chat's waiting messages are not
+touched. A message gets its `cancelled` result only when OpenCode
 says so (`session.inbox.cancelled`), which can be after `stopped`. If OpenCode does not cancel one
 (it was taken up first, or the call did not land), the message stays waiting and gets its `result`
 from the run that takes it up, which OpenCode starts with the next message sent.
